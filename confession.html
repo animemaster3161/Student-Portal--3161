@@ -573,6 +573,11 @@
             color: var(--danger);
         }
 
+        .action-btn.liked,
+        .action-btn.liked i {
+            color: var(--danger);
+        }
+
         .delete-btn {
             display: inline-flex;
             align-items: center;
@@ -1035,6 +1040,7 @@
         let selectedFile = null;
         let currentUser = null;
         let myPostIds = new Set();
+        let myLikes = new Set();
         let currentFilter = "latest";
         const categoryLabels = {
             "tag-crush": "Crush", "tag-rant": "Rant", "tag-funny": "Funny", "tag-faculty": "Faculty"
@@ -1119,6 +1125,13 @@
                 if (mineErr) console.warn("my_confession_ids:", mineErr.message);
                 else myPostIds = new Set((mine || []).map(String));
             }
+            myLikes = new Set();
+            if (currentUser) {
+                const { data: votes, error: voteErr } = await sb.from("confession_votes")
+                    .select("post_id").eq("user_id", currentUser.id);
+                if (voteErr) console.warn("confession_votes:", voteErr.message);
+                else myLikes = new Set((votes || []).map(v => String(v.post_id)));
+            }
             const feed = document.getElementById("confessionFeed");
             feed.innerHTML = "";
             if (!data?.length) {
@@ -1149,7 +1162,7 @@
       <span class="tag ${tag}">${categoryLabels[tag]}</span></div>
     ${post.body ? `<div class="c-body">${escapeHTML(post.body).replace(/\n/g, "<br>")}</div>` : ""}${media}
     <div class="c-footer"><div class="action-group">
-      <button class="action-btn" data-action="vote"><i class="far fa-heart"></i> <span class="count">${Number(post.upvote_count) || 0}</span></button>
+      <button class="action-btn${myLikes.has(String(post.id)) ? " liked" : ""}" data-action="vote"><i class="${myLikes.has(String(post.id)) ? "fas" : "far"} fa-heart"></i> <span class="count">${Number(post.upvote_count) || 0}</span></button>
       <button class="action-btn" data-action="comments"><i class="far fa-comment"></i> <span class="c-count">${Number(post.comment_count) || 0}</span></button>
     </div>${isMine
       ? `<button class="delete-btn" data-action="delete" title="Delete my post" aria-label="Delete my post"><i class="fas fa-trash"></i> Delete</button>`
@@ -1167,15 +1180,37 @@
             card.querySelector(".comment-input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); postComment(card, post.id); } });
             return card;
         }
+        function setLiked(btn, liked, count) {
+            btn.classList.toggle("liked", liked);
+            const icon = btn.querySelector("i");
+            icon.classList.toggle("fas", liked);
+            icon.classList.toggle("far", !liked);
+            btn.querySelector(".count").textContent = count;
+        }
+        // Poore feed ko rebuild kiye bina sirf is post ke counts server se sync karo
+        async function refreshCounts(card, postId) {
+            const { data, error } = await sb.from("public_confessions")
+                .select("upvote_count,comment_count").eq("id", postId).maybeSingle();
+            if (error || !data) return;
+            card.querySelector(".count").textContent = Number(data.upvote_count) || 0;
+            card.querySelector(".c-count").textContent = Number(data.comment_count) || 0;
+        }
         async function toggleUpvote(card, postId) {
             if (!sb) return alert("Configure Supabase first.");
             if (!currentUser) return alert("Please sign in to vote.");
             const btn = card.querySelector('[data-action="vote"]');
+            const wasLiked = btn.classList.contains("liked");
+            const before = Number(btn.querySelector(".count").textContent) || 0;
+            setLiked(btn, !wasLiked, Math.max(0, before + (wasLiked ? -1 : 1)));   // turant dikhao
             btn.disabled = true;
             const { error } = await sb.rpc("toggle_confession_vote", { p_post_id: postId });
             btn.disabled = false;
-            if (error) return alert("Could not save vote: " + error.message);
-            await loadFeed();
+            if (error) {
+                setLiked(btn, wasLiked, before);                                   // fail hua to wapas
+                return alert("Could not save vote: " + error.message);
+            }
+            wasLiked ? myLikes.delete(String(postId)) : myLikes.add(String(postId));
+            await refreshCounts(card, postId);
         }
         function toggleComments(card, postId) {
             const section = card.querySelector(".comments-section");
@@ -1206,7 +1241,10 @@
             btn.disabled = false;
             if (error) return alert("Could not post comment: " + error.message);
             input.value = "";
-            await loadComments(card, postId); await loadFeed();
+            const cc = card.querySelector(".c-count");
+            cc.textContent = (Number(cc.textContent) || 0) + 1;                    // turant dikhao
+            await loadComments(card, postId);
+            await refreshCounts(card, postId);
         }
         async function reportPost(postId) {
             if (!sb || !currentUser) return alert("Please sign in to report a post.");

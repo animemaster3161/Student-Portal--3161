@@ -744,13 +744,39 @@
             color: var(--ink);
             resize: none;
             min-height: 60px;
-            max-height: 150px;
-            transition: all .3s var(--ease);
+            max-height: min(38vh, 240px);
+            transition: border-color .3s var(--ease), background .3s var(--ease), box-shadow .3s var(--ease);
             outline: none;
-            line-height: 1.5;
-            overflow-y: hidden;
+            line-height: 1.55;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: var(--indigo-light) transparent;
             box-shadow: 0 4px 10px rgba(99, 85, 224, 0.04);
         }
+
+        .confession-textarea::-webkit-scrollbar { width: 6px; }
+        .confession-textarea::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+        .confession-textarea::-webkit-scrollbar-thumb {
+            background: var(--indigo-light);
+            border-radius: 999px;
+        }
+
+        .textarea-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: -4px;
+            padding: 0 6px;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: var(--ink-faint);
+            min-height: 14px;
+        }
+        .textarea-meta .hint { opacity: 0; transition: opacity .2s; }
+        .confession-textarea:focus ~ .textarea-meta .hint { opacity: 1; }
+        .textarea-meta .count { font-variant-numeric: tabular-nums; margin-left: auto; }
+        @media (max-width: 900px) { .textarea-meta .hint { display: none; } }
 
         .confession-textarea:focus {
             background: linear-gradient(var(--surface), var(--surface)) padding-box,
@@ -985,12 +1011,16 @@
 
                 <!-- Full-Width Colored Auto-resizing Textarea -->
                 <textarea class="confession-textarea" id="confessionInput"
-                    placeholder="Type your confession anonymously..." oninput="autoResize(this)"></textarea>
+                    placeholder="Type your confession anonymously..." rows="1"></textarea>
+                <div class="textarea-meta">
+                    <span class="hint">Ctrl + Enter to post</span>
+                    <span class="count" id="charCount"></span>
+                </div>
 
                 <div class="submit-controls">
                     <div class="controls-left">
                         <input type="file" id="fileUpload" accept="image/*,video/*" style="display: none;"
-                            onchange="previewImage(event)">
+                            >
                         <button class="attach-btn" onclick="document.getElementById('fileUpload').click()"
                             title="Attach Image or Video">
                             <i class="fas fa-image"></i>
@@ -1002,7 +1032,7 @@
                             <option value="tag-faculty">👨‍🏫 Faculty</option>
                         </select>
                     </div>
-                    <button class="btn-submit" onclick="postConfession()">
+                    <button class="btn-submit">
                         <span>Post</span> <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
@@ -1034,7 +1064,7 @@
                     persistSession: true,
                     autoRefreshToken: true
                 }
-              })
+            })
             : null;
         const avatars = ["🕵️", "👻", "👽", "🤖", "🐱", "🎭", "🦊", "🌙"];
         let selectedFile = null;
@@ -1052,7 +1082,15 @@
 
         function autoResize(el) {
             el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 150) + "px";
+            const max = parseFloat(getComputedStyle(el).maxHeight) || 240;
+            const needed = el.scrollHeight;
+            el.style.height = Math.min(needed, max) + "px";
+            el.style.overflowY = needed > max ? "auto" : "hidden";
+            const counter = document.getElementById("charCount");
+            if (counter) {
+                const n = el.value.length;
+                counter.textContent = n ? n.toLocaleString() + " characters" : "";
+            }
         }
         function previewImage(event) {
             const file = event.target.files?.[0];
@@ -1165,8 +1203,8 @@
       <button class="action-btn${myLikes.has(String(post.id)) ? " liked" : ""}" data-action="vote"><i class="${myLikes.has(String(post.id)) ? "fas" : "far"} fa-heart"></i> <span class="count">${Number(post.upvote_count) || 0}</span></button>
       <button class="action-btn" data-action="comments"><i class="far fa-comment"></i> <span class="c-count">${Number(post.comment_count) || 0}</span></button>
     </div>${isMine
-      ? `<button class="delete-btn" data-action="delete" title="Delete my post" aria-label="Delete my post"><i class="fas fa-trash"></i> Delete</button>`
-      : `<button class="report-btn" data-action="report" title="Report this post" aria-label="Report this post"><i class="fas fa-flag"></i></button>`}</div>
+                    ? `<button class="delete-btn" data-action="delete" title="Delete my post" aria-label="Delete my post"><i class="fas fa-trash"></i> Delete</button>`
+                    : `<button class="report-btn" data-action="report" title="Report this post" aria-label="Report this post"><i class="fas fa-flag"></i></button>`}</div>
     <div class="comments-section"><div class="comments-list"></div><div class="comment-input-row">
       <input type="text" placeholder="Add an anonymous comment..." class="comment-input" maxlength="1000">
       <button class="btn-send-comment" data-action="send-comment" aria-label="Send comment"><i class="fas fa-paper-plane"></i></button>
@@ -1269,13 +1307,16 @@
             card.style.transform = "scale(.98)";
             setTimeout(loadFeed, 250);
         }
+        let isPosting = false;
         async function postConfession() {
+            if (isPosting) return;
             if (!sb) return alert("Configure Supabase first (project URL and anon key).");
             if (!currentUser) return alert("Please sign in before posting.");
             const input = document.getElementById("confessionInput");
             const body = input.value.trim();
             if (!body && !selectedFile) return alert("Please write something or attach an image/video.");
             const submit = document.querySelector(".btn-submit");
+            isPosting = true;
             submit.disabled = true;
             try {
                 const media = await uploadMedia(selectedFile);
@@ -1285,17 +1326,22 @@
                     media_url: media?.url || null, media_type: media?.type || null
                 });
                 if (error) throw error;
-                input.value = ""; input.style.height = "auto"; clearImage();
+                input.value = ""; autoResize(input); clearImage();
                 document.getElementById("feedArea").scrollTo({ top: 0, behavior: "smooth" });
                 await loadFeed();
             } catch (e) { alert("Post failed: " + (e.message || "Unknown error")); }
-            finally { submit.disabled = false; }
+            finally { isPosting = false; submit.disabled = false; }
         }
         document.querySelectorAll(".filter-btn").forEach((btn, i) => btn.addEventListener("click", async () => {
             document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
             btn.classList.add("active"); currentFilter = i === 1 ? "top" : "latest"; await loadFeed();
         }));
-        document.getElementById("confessionInput").addEventListener("input", e => autoResize(e.target));
+        const confessionInput = document.getElementById("confessionInput");
+        confessionInput.addEventListener("input", e => autoResize(e.target));
+        confessionInput.addEventListener("keydown", e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); postConfession(); }
+        });
+        autoResize(confessionInput);
         document.getElementById("fileUpload").addEventListener("change", previewImage);
         document.querySelector(".btn-submit").addEventListener("click", postConfession);
         if (sb) {

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(window.top!==window.self){document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important}</style>');}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal | Dashboard</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-base: #EEF3FD;
+            --surface: #FFFFFF;
+            --glass: rgba(255, 255, 255, 0.8);
+            --surface-alt: #F2F6FE;
+            --ink: #0F1B33;
+            --ink-soft: #536079;
+            --ink-faint: #96A1BC;
+
+            --blue: #2E5CE6;
+            --blue-light: #6C93FF;
+            --blue-deep: #1A38A6;
+            --blue-wash: rgba(46, 92, 230, 0.09);
+
+            --indigo: #6355E0;
+            --indigo-light: #9088F0;
+            --indigo-wash: rgba(99, 85, 224, 0.09);
+
+            --cyan: #0DA5C0;
+            --cyan-light: #4FD3E8;
+            --cyan-wash: rgba(13, 165, 192, 0.09);
+
+            --amber: #D6900F;
+            --amber-light: #F0B94A;
+            --amber-wash: rgba(214, 144, 15, 0.11);
+
+            --danger: #E14A3B;
+            --danger-light: #F28E7C;
+            --danger-wash: rgba(225, 74, 59, 0.08);
+
+            --success: #1DA35F;
+            --border: rgba(15, 27, 51, 0.08);
+
+            --shadow-sm: 0 2px 10px rgba(15, 27, 51, 0.05);
+            --shadow-md: 0 14px 32px rgba(15, 27, 51, 0.08);
+            --shadow-lg: 0 26px 56px rgba(20, 40, 100, 0.16);
+
+            --sidebar-width: 272px;
+            --ease: cubic-bezier(.22, 1, .36, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+html{overflow-x:hidden;max-width:100vw;}
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-base);
+            color: var(--ink);
+            display: flex;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient mesh background */
+        .mesh { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .mesh span { position: absolute; border-radius: 50%; filter: blur(95px); opacity: 0.55; animation: drift 24s ease-in-out infinite alternate; }
+        .mesh span:nth-child(1) { width: 560px; height: 560px; top: -180px; right: -140px; background: radial-gradient(circle, rgba(46,92,230,0.30), transparent 70%); }
+        .mesh span:nth-child(2) { width: 460px; height: 460px; bottom: -160px; left: 18%; background: radial-gradient(circle, rgba(99,85,224,0.20), transparent 70%); animation-delay: -8s; }
+        .mesh span:nth-child(3) { width: 420px; height: 420px; top: 32%; right: 8%; background: radial-gradient(circle, rgba(13,165,192,0.18), transparent 70%); animation-delay: -14s; }
+
+        ::selection { background: var(--blue-light); color: #fff; }
+        a { color: inherit; }
+        a:focus-visible, button:focus-visible { outline: 2px solid var(--blue-light); outline-offset: 3px; border-radius: 8px; }
+
+        /* ============ SIDEBAR ============ */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #0A1230 0%, #101E4C 55%, #142A63 100%);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 10;
+            overflow: hidden;
+        }
+        .sidebar::before {
+            content: "";
+            position: absolute;
+            width: 320px; height: 320px;
+            top: -110px; left: -110px;
+            background: radial-gradient(circle, rgba(108,147,255,0.25), transparent 70%);
+            filter: blur(40px);
+            pointer-events: none;
+        }
+        .sidebar > * { position: relative; z-index: 1; }
+
+        .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 0 6px; }
+        .logo-mark {
+            width: 42px; height: 42px;
+            border-radius: 13px;
+            background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff;
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 10px 22px rgba(46,92,230,0.4);
+            flex-shrink: 0;
+        }
+        .logo-text { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 16.5px; color: #fff; letter-spacing: 0.2px; line-height: 1.15; }
+        .logo-text span { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.4px; margin-top: 2px; }
+
+        .nav-section-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; color: rgba(255,255,255,0.32); text-transform: uppercase; margin: 32px 12px 12px; }
+
+        .nav-links { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .nav-links li a {
+            text-decoration: none;
+            color: rgba(255,255,255,0.64);
+            font-weight: 500;
+            font-size: 14.5px;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 11px 14px;
+            border-radius: 12px;
+            position: relative;
+            transition: color .25s var(--ease), background-color .25s var(--ease), transform .25s var(--ease);
+        }
+        .nav-links li a i { width: 18px; text-align: center; font-size: 15px; }
+        .nav-links li a:hover { background: rgba(255,255,255,0.07); color: #fff; transform: translateX(2px); }
+        .nav-links li a.active {
+            background: linear-gradient(120deg, var(--blue-light), var(--blue));
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(46,92,230,0.38);
+        }
+
+        .profile-mini {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .profile-mini .avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: #fff;
+            flex-shrink: 0;
+        }
+        .profile-mini .info { flex: 1; min-width: 0; }
+        .profile-mini .info strong { display: block; font-size: 13px; color: #fff; font-weight: 600; }
+        .profile-mini .info span { font-size: 11.5px; color: rgba(255,255,255,0.42); font-family: 'JetBrains Mono', monospace; }
+        .profile-mini i { color: rgba(255,255,255,0.42); cursor: pointer; }
+
+        /* ============ MAIN ============ */
+        .main-content { margin-left: var(--sidebar-width); padding: 36px 46px 60px; width: calc(100% - var(--sidebar-width)); position: relative; z-index: 1; }
+
+        /* ---- HERO BAND ---- */
+        .hero {
+            position: relative;
+            background:
+                radial-gradient(620px 300px at 100% 0%, rgba(255,255,255,0.16), transparent 60%),
+                radial-gradient(500px 260px at 0% 100%, rgba(79,211,232,0.35), transparent 60%),
+                linear-gradient(120deg, #16309E 0%, #2E5CE6 48%, #0DA5C0 100%);
+            border-radius: 24px;
+            padding: 28px 32px;
+            box-shadow: 0 22px 48px rgba(26, 56, 166, 0.28);
+            margin-bottom: 28px;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(14px);
+            animation: cardIn .7s var(--ease) forwards;
+        }
+        .hero::before {
+            content: "";
+            position: absolute;
+            width: 300px; height: 300px;
+            top: -160px; right: 60px;
+            background: radial-gradient(circle, rgba(255,255,255,0.22), transparent 70%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.16) 1px, transparent 1px);
+            background-size: 18px 18px;
+            mask-image: linear-gradient(120deg, rgba(0,0,0,0.5), transparent 55%);
+            pointer-events: none;
+        }
+        .hero-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; margin-bottom: 26px; }
+
+        .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px; font-weight: 600; color: #DCE8FF;
+            letter-spacing: 0.6px; text-transform: uppercase;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+        }
+        .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #6CF0B0; box-shadow: 0 0 0 0 rgba(108,240,176,0.5); animation: dotPulse 2.4s infinite; }
+
+        .greeting h1 { font-family: 'Sora', sans-serif; color: #fff; font-size: 30px; font-weight: 800; letter-spacing: -0.4px; }
+        .greeting p { color: rgba(255,255,255,0.78); font-size: 13.5px; margin-top: 7px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.3px; }
+
+        .profile-area { display: flex; align-items: center; gap: 16px; }
+        .icon-btn {
+            position: relative; width: 42px; height: 42px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; cursor: pointer;
+            background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.28);
+            transition: background .2s var(--ease), color .2s var(--ease), transform .2s var(--ease);
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.32); transform: translateY(-2px); }
+        .icon-btn .badge { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #FF6B57; box-shadow: 0 0 0 2px #2E5CE6; }
+        .profile-pic {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: linear-gradient(145deg, #FFE9A8, var(--amber));
+            color: #3A2600; display: flex; justify-content: center; align-items: center;
+            font-weight: 700; font-family: 'Sora', sans-serif; font-size: 16px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        /* Stat chips row inside hero */
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; position: relative; z-index: 1; }
+        .stat-chip {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: 15px;
+            background: rgba(255,255,255,0.14);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.24);
+            transition: transform .3s var(--ease), background .3s var(--ease);
+        }
+        .stat-chip:hover { transform: translateY(-3px); background: rgba(255,255,255,0.22); }
+        .stat-chip .stat-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; flex-shrink: 0; background: rgba(255,255,255,0.2); box-shadow: none; }
+        .stat-chip .stat-text strong { display: block; font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 600; color: #fff; line-height: 1.15; }
+        .stat-chip .stat-text span { font-size: 11.5px; color: rgba(255,255,255,0.72); }
+
+        .icon-blue { background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); box-shadow: 0 8px 16px rgba(46,92,230,0.3); }
+        .icon-indigo { background: linear-gradient(145deg, var(--indigo-light), var(--indigo)); box-shadow: 0 8px 16px rgba(99,85,224,0.3); }
+        .icon-cyan { background: linear-gradient(145deg, var(--cyan-light), var(--cyan)); box-shadow: 0 8px 16px rgba(13,165,192,0.3); }
+        .icon-amber { background: linear-gradient(145deg, var(--amber-light), var(--amber)); box-shadow: 0 8px 16px rgba(214,144,15,0.3); }
+        .icon-danger { background: linear-gradient(145deg, var(--danger-light), var(--danger)); box-shadow: 0 8px 16px rgba(225,74,59,0.3); }
+
+        /* ============ GRID ============ */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+            opacity: 0;
+            transform: translateY(16px);
+            animation: cardIn .6s var(--ease) forwards;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+        .card:nth-child(1) { animation-delay: .10s; }
+        .card:nth-child(2) { animation-delay: .17s; }
+        .card:nth-child(3) { animation-delay: .24s; }
+        .card:nth-child(4) { animation-delay: .31s; }
+        .card:nth-child(5) { animation-delay: .38s; }
+        .card:nth-child(6) { animation-delay: .45s; }
+
+        .card-title {
+            font-family: 'Sora', sans-serif; color: var(--ink); font-size: 15.5px; font-weight: 700;
+            margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .icon-chip { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13.5px; color: #fff; flex-shrink: 0; }
+
+        /* ---- Attendance widget ---- */
+        .attendance-widget { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .ring-wrap { position: relative; width: 148px; height: 148px; margin-bottom: 18px; }
+        .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .ring-bg { fill: none; stroke: var(--surface-alt); stroke-width: 11; }
+        .ring-fg {
+            fill: none; stroke: url(#ringGradient); stroke-width: 11; stroke-linecap: round;
+            stroke-dasharray: 345.6; stroke-dashoffset: 345.6;
+            animation: ringDraw 1.6s .5s var(--ease) forwards;
+            filter: drop-shadow(0 4px 10px rgba(46,92,230,0.35));
+        }
+        .ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .ring-label .pct { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; color: var(--ink); }
+        .ring-label .pct::after { content: '%'; font-size: 15px; color: var(--ink-faint); }
+        .ring-label .sub { font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.5px; text-transform: uppercase; margin-top: 2px; }
+
+        .status-clear { color: var(--success); font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; background: rgba(29,163,95,0.1); padding: 6px 14px; border-radius: 20px; }
+        .attendance-widget .hint { font-size: 12px; color: var(--ink-faint); margin-top: 9px; }
+
+        /* ---- Timetable widget ---- */
+        .timetable-widget { grid-row: span 2; }
+        .timeline { position: relative; }
+        .timeline::before { content: ""; position: absolute; left: 24px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(var(--border), var(--border) 70%, transparent); }
+        .timeline-item { display: flex; gap: 16px; margin-bottom: 18px; position: relative; }
+        .timeline-item:last-child { margin-bottom: 0; }
+
+        .subject-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; flex-shrink: 0; position: relative; z-index: 1; box-shadow: 0 8px 16px rgba(15,27,51,0.14); }
+
+        .subject-body { flex: 1; padding-top: 3px; }
+        .subject-body .time-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ink-faint); letter-spacing: 0.3px; }
+        .subject { background: var(--surface-alt); padding: 12px 15px; border-radius: 13px; margin-top: 6px; transition: transform .25s var(--ease); }
+        .timeline-item:hover .subject { transform: translateX(3px); }
+        .subject h4 { font-family: 'Sora', sans-serif; color: var(--ink); font-size: 14px; font-weight: 600; }
+        .subject p { color: var(--ink-faint); font-size: 12px; margin-top: 3px; }
+
+        .active-class { background: linear-gradient(120deg, var(--blue), var(--blue-deep)); box-shadow: 0 12px 26px rgba(46,92,230,0.32); }
+        .active-class h4, .active-class p { color: #fff; }
+        .active-class p { color: rgba(255,255,255,0.78); }
+        .live-tag { display: inline-flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; background: rgba(255,255,255,0.22); padding: 2px 9px; border-radius: 20px; margin-top: 7px; width: fit-content; }
+        .live-tag::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #fff; animation: blinker 1.4s linear infinite; }
+
+        .break-row .subject { background: var(--amber-wash); }
+        .break-row h4 { color: var(--amber); font-size: 13px; }
+
+        /* ---- Deadlines widget ---- */
+        .deadline-card { background: linear-gradient(165deg, #ffffff, #FFF6F4 130%); border-color: rgba(225,74,59,0.18); }
+        .deadline-item { background: var(--danger-wash); padding: 17px; border-radius: 15px; border: 1px solid rgba(225,74,59,0.18); }
+        .deadline-item h4 { font-family: 'Sora', sans-serif; color: var(--ink); font-size: 14.5px; font-weight: 600; }
+        .deadline-item .countdown { color: var(--danger); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; margin-top: 11px; display: flex; align-items: center; gap: 7px; }
+        .deadline-item .countdown i { animation: pulseSoft 1.6s ease-in-out infinite; }
+        .deadline-bar { margin-top: 13px; height: 6px; border-radius: 4px; background: rgba(225,74,59,0.18); overflow: hidden; }
+        .deadline-bar span { display: block; height: 100%; width: 84%; border-radius: 4px; background: linear-gradient(90deg, var(--danger), var(--danger-light)); animation: barGrow 1.4s .4s var(--ease) both; }
+
+        /* ---- Notices widget ---- */
+        .notice-list { list-style: none; }
+        .notice-list li { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--ink); display: flex; align-items: flex-start; gap: 12px; transition: padding-left .2s var(--ease); }
+        .notice-list li:last-child { border-bottom: none; padding-bottom: 0; }
+        .notice-list li:hover { padding-left: 4px; }
+        .notice-list li .tick { width: 24px; height: 24px; border-radius: 8px; background: var(--blue-wash); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+        .notice-list li .txt { flex: 1; }
+        .notice-list li .txt small { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-faint); margin-top: 3px; }
+
+        /* ---- Exams widget ---- */
+        .exam-box { background: linear-gradient(155deg, var(--surface-alt), #EAF0FE); padding: 18px; border-radius: 15px; border: 1px solid var(--border); }
+        .exam-box h4 { font-family: 'Sora', sans-serif; color: var(--ink); font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+        .exam-box p { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 13px; line-height: 1.55; }
+        .exam-box a { color: var(--blue); font-size: 13px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: gap .2s var(--ease); }
+        .exam-box a:hover { gap: 10px; }
+        .exam-tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; color: var(--amber); background: var(--amber-wash); padding: 4px 10px; border-radius: 20px; margin-bottom: 11px; }
+
+        /* ---- Quick links ---- */
+        .quick-links { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+        .q-btn {
+            padding: 14px 13px; background: var(--surface-alt); border: 1px solid transparent; border-radius: 13px;
+            cursor: pointer; font-weight: 600; font-size: 13px; color: var(--ink);
+            display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+            transition: background .25s var(--ease), color .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease);
+        }
+        .q-btn .q-icon { width: 32px; height: 32px; border-radius: 9px; background: var(--blue-wash); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 13px; transition: transform .3s var(--ease), background .3s var(--ease), color .3s var(--ease); }
+        .q-btn:hover { background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); color: #fff; transform: translateY(-3px); box-shadow: 0 14px 26px rgba(46,92,230,0.35); }
+        .q-btn:hover .q-icon { background: rgba(255,255,255,0.22); color: #fff; transform: scale(1.12) rotate(-6deg); }
+
+        /* ============ KEYFRAMES ============ */
+        @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+        @keyframes ringDraw { to { stroke-dashoffset: 62.2; } }
+        @keyframes blinker { 50% { opacity: 0.2; } }
+        @keyframes pulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        @keyframes dotPulse { 0% { box-shadow: 0 0 0 0 rgba(29,163,95,0.45); } 70% { box-shadow: 0 0 0 9px rgba(29,163,95,0); } 100% { box-shadow: 0 0 0 0 rgba(29,163,95,0); } }
+        @keyframes barGrow { from { width: 0; } }
+        @keyframes drift { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-40px, 30px) scale(1.08); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+            .card, .hero { opacity: 1; transform: none; }
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 1080px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+            .timetable-widget { grid-row: span 1; grid-column: span 2; }
+            .stat-row { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 780px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; width: 100%; padding: 22px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .timetable-widget { grid-column: span 1; }
+            .hero-top { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .profile-area { align-self: stretch; justify-content: space-between; }
+            .stat-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mesh"><span></span><span></span><span></span></div>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="logo">
+            <div class="logo-mark">MG</div>
+            <div class="logo-text">MGMCOET<span>Student Portal</span></div>
+        </div>
+
+        <div class="nav-section-label">Menu</div>
+        <ul class="nav-links">
+            <li><a href="#" class="active"><i class="fas fa-grip"></i> Dashboard</a></li>
+            <li><a href="#"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="#"><i class="fas fa-bullhorn"></i> All Notices</a></li>
+            <li><a href="#"><i class="fas fa-book"></i> Academics</a></li>
+            <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+        </ul>
+
+        <div class="profile-mini">
+            <div class="avatar">P</div>
+            <div class="info">
+                <strong>Priyansh Kumar</strong>
+                <span>2200156</span>
+            </div>
+            <i class="fas fa-ellipsis-vertical"></i>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-top">
+                <div class="greeting">
+                    <div class="eyebrow"><span class="dot"></span> <span id="dayLabel">Today</span></div>
+                    <h1 id="greetingText">Hi, Priyansh Kumar 👋</h1>
+                    <p>B.TECH (CS) &nbsp;·&nbsp; 2ND YEAR &nbsp;·&nbsp; ROLL NO. 2200156</p>
+                </div>
+                <div class="profile-area">
+                    <div class="icon-btn"><i class="fas fa-bell"></i><span class="badge"></span></div>
+                    <div class="profile-pic">P</div>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-chip">
+                    <div class="stat-icon icon-blue"><i class="fas fa-chart-pie"></i></div>
+                    <div class="stat-text"><strong>82%</strong><span>Attendance</span></div>
+                </div>
+                <div class="stat-chip">
+                    <div class="stat-icon icon-indigo"><i class="fas fa-database"></i></div>
+                    <div class="stat-text"><strong>DBMS</strong><span>Live Now</span></div>
+                </div>
+                <div class="stat-chip">
+                    <div class="stat-icon icon-danger"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="stat-text"><strong>1d 4h</strong><span>OS Assignment</span></div>
+                </div>
+                <div class="stat-chip">
+                    <div class="stat-icon icon-amber"><i class="fas fa-file-alt"></i></div>
+                    <div class="stat-text"><strong>15 Dec</strong><span>Sem Exams</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DASHBOARD GRID -->
+        <div class="dashboard-grid">
+
+            <!-- WIDGET 1: Attendance -->
+            <div class="card attendance-widget">
+                <div class="card-title" style="width: 100%;">Attendance <span class="icon-chip icon-blue"><i class="fas fa-chart-pie"></i></span></div>
+                <div class="ring-wrap">
+                    <svg viewBox="0 0 120 120">
+                        <defs>
+                            <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#6C93FF"/>
+                                <stop offset="100%" stop-color="#1A38A6"/>
+                            </linearGradient>
+                        </defs>
+                        <circle class="ring-bg" cx="60" cy="60" r="55"></circle>
+                        <circle class="ring-fg" cx="60" cy="60" r="55"></circle>
+                    </svg>
+                    <div class="ring-label"><span class="pct" id="attendancePct">0</span><span class="sub">This semester</span></div>
+                </div>
+                <p class="status-clear"><i class="fas fa-check-circle"></i> Status: Clear</p>
+                <p class="hint">Above the 75% attendance criteria</p>
+            </div>
+
+            <!-- WIDGET 2: Timetable -->
+            <div class="card timetable-widget">
+                <div class="card-title">Today's Timetable <span class="icon-chip icon-blue"><i class="fas fa-calendar-day"></i></span></div>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="subject-icon icon-cyan"><i class="fas fa-flask"></i></div>
+                        <div class="subject-body">
+                            <span class="time-tag">09:00 AM</span>
+                            <div class="subject">
+                                <h4>Robotics (Lab)</h4>
+                                <p>Lab Room 3</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="subject-icon icon-indigo"><i class="fas fa-database"></i></div>
+                        <div class="subject-body">
+                            <span class="time-tag">11:30 AM</span>
+                            <div class="subject active-class">
+                                <h4>DBMS</h4>
+                                <p>Room 402 &nbsp;·&nbsp; Prof. Sharma</p>
+                                <span class="live-tag">LIVE NOW</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-item break-row">
+                        <div class="subject-icon icon-amber"><i class="fas fa-mug-hot"></i></div>
+                        <div class="subject-body">
+                            <span class="time-tag">01:00 PM</span>
+                            <div class="subject"><h4>Lunch Break</h4></div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="subject-icon icon-blue"><i class="fas fa-microchip"></i></div>
+                        <div class="subject-body">
+                            <span class="time-tag">02:00 PM</span>
+                            <div class="subject">
+                                <h4>Operating Systems</h4>
+                                <p>Room 405</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WIDGET 3: Deadlines -->
+            <div class="card deadline-card">
+                <div class="card-title">Pending Deadlines <span class="icon-chip icon-danger"><i class="fas fa-hourglass-half"></i></span></div>
+                <div class="deadline-item">
+                    <h4>OS Assignment Submission</h4>
+                    <p class="countdown"><i class="fas fa-exclamation-triangle"></i> 1 Day, 4 Hrs Left</p>
+                    <div class="deadline-bar"><span></span></div>
+                </div>
+            </div>
+
+            <!-- WIDGET 4: Notices -->
+            <div class="card">
+                <div class="card-title">Daily Notices <span class="icon-chip icon-blue"><i class="fas fa-thumbtack"></i></span></div>
+                <ul class="notice-list">
+                    <li><span class="tick"><i class="fas fa-angle-right"></i></span><span class="txt">Guest lecture at 3 PM in the Auditorium (college level).<small>POSTED 08:10 AM</small></span></li>
+                    <li><span class="tick"><i class="fas fa-angle-right"></i></span><span class="txt">Bus route no. 4 modified for today.<small>POSTED 07:45 AM</small></span></li>
+                    <li><span class="tick"><i class="fas fa-angle-right"></i></span><span class="txt">Mandatory ID card check at the main gate.<small>POSTED YESTERDAY</small></span></li>
+                </ul>
+            </div>
+
+            <!-- WIDGET 5: Exams -->
+            <div class="card">
+                <div class="card-title">Exams Update <span class="icon-chip icon-amber"><i class="fas fa-file-alt"></i></span></div>
+                <div class="exam-box">
+                    <span class="exam-tag">STARTS 15 DEC</span>
+                    <h4>AKTU End Semester</h4>
+                    <p>Admit cards are out — download and verify your details before the exam window opens.</p>
+                    <a href="#">Download Date Sheet <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <!-- WIDGET 6: Quick Links -->
+            <div class="card">
+                <div class="card-title">Quick Links <span class="icon-chip icon-blue"><i class="fas fa-link"></i></span></div>
+                <div class="quick-links">
+                    <button class="q-btn"><span class="q-icon"><i class="fas fa-book-reader"></i></span> E-Library</button>
+                    <button class="q-btn"><span class="q-icon"><i class="fas fa-receipt"></i></span> Fee Portal</button>
+                    <button class="q-btn"><span class="q-icon"><i class="fas fa-poll"></i></span> Results</button>
+                    <button class="q-btn"><span class="q-icon"><i class="fas fa-headset"></i></span> Helpdesk</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            const hour = new Date().getHours();
+            const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+            document.getElementById("greetingText").textContent = greeting + ", Priyansh Kumar 👋";
+            document.getElementById("dayLabel").textContent =
+                new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+        })();
+
+        (function () {
+            const el = document.getElementById("attendancePct");
+            const target = 82;
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (reduceMotion) { el.textContent = target; return; }
+            let start = null;
+            const duration = 1500;
+            function step(ts) {
+                if (!start) start = ts;
+                const progress = Math.min((ts - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(eased * target);
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        })();
+    </script>
+
+</body>
+</html>

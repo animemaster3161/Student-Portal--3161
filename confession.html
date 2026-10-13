@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(window.top!==window.self){document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important}</style>');}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Portal | Confessions</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    :root {
+        --bg-base: #EEF3FD;
+        --surface: #FFFFFF;
+        --surface-alt: #F2F6FE;
+        --ink: #0F1B33;
+        --ink-soft: #536079;
+        --ink-faint: #96A1BC;
+        --blue: #2E5CE6;
+        --blue-light: #6C93FF;
+        --blue-deep: #1A38A6;
+        --indigo: #6355E0;
+        --indigo-light: #9088F0;
+        --indigo-wash: rgba(99, 85, 224, 0.09);
+        --cyan: #0DA5C0;
+        --cyan-light: #4FD3E8;
+        --cyan-wash: rgba(13, 165, 192, 0.09);
+        --amber: #D6900F;
+        --amber-wash: rgba(214, 144, 15, 0.11);
+        --danger: #E14A3B;
+        --danger-wash: rgba(225, 74, 59, 0.08);
+        --success: #1DA35F;
+        --border: rgba(15, 27, 51, 0.08);
+        --shadow-sm: 0 2px 10px rgba(15, 27, 51, 0.05);
+        --shadow-md: 0 14px 32px rgba(15, 27, 51, 0.08);
+        --shadow-lg: 0 26px 56px rgba(20, 40, 100, 0.16);
+        --sidebar-width: 272px;
+        --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+html{overflow-x:hidden;max-width:100vw;}
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--ink);
+        display: flex; height: 100vh; height: 100svh; overflow: hidden; -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient mesh background */
+    .mesh { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .mesh span { position: absolute; border-radius: 50%; filter: blur(95px); opacity: 0.55; animation: drift 24s ease-in-out infinite alternate; }
+    .mesh span:nth-child(1) { width: 560px; height: 560px; top: -180px; right: -140px; background: radial-gradient(circle, rgba(46,92,230,0.30), transparent 70%); }
+    .mesh span:nth-child(2) { width: 460px; height: 460px; bottom: -160px; left: 18%; background: radial-gradient(circle, rgba(99,85,224,0.20), transparent 70%); animation-delay: -8s; }
+    .mesh span:nth-child(3) { width: 420px; height: 420px; top: 32%; right: 8%; background: radial-gradient(circle, rgba(13,165,192,0.18), transparent 70%); animation-delay: -14s; }
+
+    ::selection { background: var(--blue-light); color: #fff; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--blue-light); outline-offset: 3px; border-radius: 8px; }
+
+    /* SIDEBAR */
+    .sidebar {
+        width: var(--sidebar-width); background: linear-gradient(180deg, #0A1230 0%, #101E4C 55%, #142A63 100%);
+        padding: 30px 20px; display: flex; flex-direction: column; z-index: 10;
+    }
+    .sidebar::before {
+        content: ""; position: absolute; width: 320px; height: 320px; top: -110px; left: -110px;
+        background: radial-gradient(circle, rgba(108,147,255,0.25), transparent 70%); filter: blur(40px); pointer-events: none;
+    }
+    .sidebar > * { position: relative; z-index: 1; }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 0 6px; }
+    .logo-mark { width: 42px; height: 42px; border-radius: 13px; background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 15px; box-shadow: 0 10px 22px rgba(46,92,230,0.4); flex-shrink: 0; }
+    .logo-text { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 16.5px; color: #fff; line-height: 1.15; }
+    .logo-text span { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+    .nav-section-label { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.32); text-transform: uppercase; margin: 32px 12px 12px; }
+    .nav-links { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .nav-links li a { color: rgba(255,255,255,0.64); text-decoration: none; font-weight: 500; font-size: 14.5px; display: flex; align-items: center; gap: 13px; padding: 11px 14px; border-radius: 12px; transition: all .25s var(--ease); }
+    .nav-links li a i { width: 18px; text-align: center; font-size: 15px; }
+    .nav-links li a:hover { background: rgba(255,255,255,0.07); color: #fff; transform: translateX(2px); }
+    .nav-links li a.active { background: linear-gradient(120deg, var(--blue-light), var(--blue)); color: #fff; box-shadow: 0 10px 24px rgba(46,92,230,0.38); }
+    .profile-mini { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 15px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); }
+    .profile-mini .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(145deg, var(--cyan-light), #0DA5C0); display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 700; color: #fff; }
+    .profile-mini .info strong { display: block; font-size: 13px; color: #fff; }
+    .profile-mini .info span { font-size: 11.5px; color: rgba(255,255,255,0.42); font-family: 'JetBrains Mono', monospace; }
+
+    /* MAIN CONTAINER */
+    .main-container {
+        flex: 1; display: flex; flex-direction: column; position: relative; z-index: 1;
+    }
+
+    /* SCROLLABLE FEED AREA */
+    .feed-area {
+        flex: 1; overflow-y: auto; padding: 36px 46px; display: flex; flex-direction: column; align-items: center;
+        scrollbar-width: thin; scrollbar-color: rgba(15,27,51,0.1) transparent;
+    }
+    .feed-area::-webkit-scrollbar { width: 6px; }
+    .feed-area::-webkit-scrollbar-thumb { background: rgba(15,27,51,0.15); border-radius: 10px; }
+    
+    .content-wrapper { width: 100%; max-width: 720px; }
+
+    .page-header { margin-bottom: 32px; text-align: center; opacity: 0; transform: translateY(14px); animation: cardIn .6s var(--ease) forwards; }
+    .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; color: var(--indigo); text-transform: uppercase; margin-bottom: 8px; display: inline-flex; align-items: center; gap: 8px; }
+    .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--indigo); box-shadow: 0 0 0 0 rgba(99,85,224,0.45); animation: dotPulseIndigo 2.4s infinite; }
+    .page-header h1 { font-family: 'Sora', sans-serif; font-size: 30px; font-weight: 800; }
+    .page-header p { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
+
+    .feed-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; opacity: 0; transform: translateY(16px); animation: cardIn .6s .1s var(--ease) forwards; }
+    .feed-header h3 { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: var(--ink); }
+    .filter-tabs { display: flex; gap: 8px; }
+    .filter-btn { background: transparent; border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: all .2s; }
+    .filter-btn:hover { background: var(--surface-alt); color: var(--ink); }
+    .filter-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    .feed-container { display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; }
+
+    /* CONFESSION CARDS */
+    .confession-card {
+        background: var(--surface); border-radius: 20px; padding: 24px; border: 1px solid var(--border);
+        box-shadow: var(--shadow-sm); transition: transform .3s, box-shadow .3s;
+        opacity: 0; transform: translateY(16px); animation: cardIn .5s forwards;
+    }
+    .confession-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .c-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .c-author { display: flex; align-items: center; gap: 12px; }
+    .anon-avatar { width: 42px; height: 42px; border-radius: 12px; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid var(--border); }
+    .c-author-info strong { display: block; font-family: 'Sora', sans-serif; font-size: 14.5px; color: var(--ink); }
+    .c-author-info span { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-faint); margin-top: 2px; display: block; }
+    .tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; padding: 5px 10px; border-radius: 8px; }
+    .tag-crush { background: var(--danger-wash); color: var(--danger); }
+    .tag-rant { background: var(--amber-wash); color: var(--amber); }
+    .tag-funny { background: var(--cyan-wash); color: #0088A3; }
+    .tag-faculty { background: var(--indigo-wash); color: var(--indigo); }
+    .c-body { font-size: 14.5px; color: var(--ink); line-height: 1.6; margin-bottom: 16px; }
+    .c-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 16px; border: 1px solid var(--border); }
+    
+    .c-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--surface-alt); padding-top: 16px; }
+    .action-group { display: flex; gap: 16px; }
+    .action-btn { background: transparent; border: none; display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; transition: color .2s; }
+    .action-btn:hover { color: var(--blue); }
+    .action-btn.upvoted { color: var(--indigo); }
+    .report-btn { color: var(--ink-faint); background: transparent; border: none; cursor: pointer; transition: color .2s; }
+    .report-btn:hover { color: var(--danger); }
+
+    /* COMMENTS SECTION */
+    .comments-section { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 16px; display: none; }
+    .comments-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; max-height: 200px; overflow-y: auto; }
+    .comment-item { background: var(--surface-alt); padding: 12px 14px; border-radius: 12px; font-size: 13px; color: var(--ink); line-height: 1.4; }
+    .comment-item strong { font-weight: 600; margin-right: 6px; }
+    
+    .comment-input-row { display: flex; gap: 10px; align-items: center; }
+    .comment-input-row input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-family: 'Inter', sans-serif; font-size: 13px; outline: none; transition: border-color .2s; }
+    .comment-input-row input:focus { border-color: var(--indigo-light); }
+    .btn-send-comment { width: 38px; height: 38px; border-radius: 10px; background: var(--indigo-wash); color: var(--indigo); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+    .btn-send-comment:hover { background: var(--indigo); color: #fff; }
+
+    /* ========================================================
+       FIXED BOTTOM SUBMIT BAR - FULL WIDTH DOCK STYLE
+       ======================================================== */
+    .fixed-bottom-bar {
+        background: rgba(255, 255, 255, 0.85); /* Solid glass background across entire width */
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 30px rgba(15, 27, 51, 0.04);
+        padding: 24px 46px; /* Padding matches the main content padding */
+        display: flex; 
+        justify-content: center; 
+        z-index: 20; 
+        width: 100%;
+    }
+    
+    .submit-box {
+        width: 100%; 
+        max-width: 100%; /* Allows it to take full available space */
+        display: flex; 
+        flex-direction: column; 
+        gap: 12px;
+    }
+    
+    /* Image Preview Container */
+    .image-preview-box { display: none; position: relative; width: fit-content; margin-bottom: 2px; }
+    .image-preview-box img { max-height: 80px; border-radius: 10px; border: 2px solid var(--indigo-light); object-fit: contain; }
+    .remove-image-btn { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; background: var(--danger); color: #fff; border: none; border-radius: 50%; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); z-index: 2;}
+    
+    /* Input Area - Full Width & Modern */
+    .confession-textarea {
+        width: 100%; 
+        padding: 16px 20px; 
+        border-radius: 16px; 
+        border: 2px solid transparent; 
+        background: linear-gradient(var(--surface-alt), var(--surface-alt)) padding-box,
+                    linear-gradient(135deg, var(--indigo-light), var(--cyan-light)) border-box;
+        font-family: 'Inter', sans-serif; 
+        font-size: 15px; 
+        color: var(--ink); 
+        resize: none; 
+        min-height: 60px; 
+        max-height: 150px;
+        transition: all .3s var(--ease); 
+        outline: none; 
+        line-height: 1.5; 
+        overflow-y: hidden;
+        box-shadow: 0 4px 10px rgba(99, 85, 224, 0.04);
+    }
+    .confession-textarea:focus { 
+        background: linear-gradient(var(--surface), var(--surface)) padding-box,
+                    linear-gradient(135deg, var(--indigo), var(--cyan)) border-box;
+        box-shadow: 0 6px 20px rgba(13, 165, 192, 0.12), 0 0 0 3px var(--cyan-wash); 
+    }
+    .confession-textarea::placeholder { color: var(--ink-faint); font-weight: 500; }
+
+    .submit-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+    .controls-left { display: flex; align-items: center; gap: 12px; }
+    
+    .attach-btn {
+        width: 42px; height: 42px; border-radius: 12px; background: var(--surface-alt); border: 1px solid var(--border);
+        color: var(--indigo); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s;
+    }
+    .attach-btn:hover { background: var(--indigo-wash); border-color: var(--indigo-light); transform: translateY(-2px); }
+
+    .category-select {
+        padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-alt);
+        font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); outline: none; cursor: pointer;
+        transition: all .2s;
+    }
+    .category-select:hover { border-color: var(--indigo-light); }
+    
+    .btn-submit {
+        background: linear-gradient(145deg, var(--indigo-light), var(--indigo)); color: #fff; border: none;
+        padding: 12px 26px; border-radius: 14px; font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 700;
+        cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 16px rgba(99,85,224,0.25);
+        transition: transform .2s, box-shadow .2s;
+    }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99,85,224,0.35); }
+
+    @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+    @keyframes dotPulseIndigo { 0% { box-shadow: 0 0 0 0 rgba(99,85,224,0.45); } 70% { box-shadow: 0 0 0 9px rgba(99,85,224,0); } 100% { box-shadow: 0 0 0 0 rgba(99,85,224,0); } }
+    
+    @media (max-width: 780px) {
+        .sidebar { display: none; }
+        .feed-area { padding: 20px 16px; }
+        .fixed-bottom-bar { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+        .submit-box { gap: 8px; }
+        .confession-textarea { min-height: 46px; padding: 12px 16px; font-size: 14px; }
+        .submit-controls { gap: 8px; }
+        .controls-left { gap: 6px; }
+        .attach-btn { width: 38px; height: 38px; flex-shrink: 0; }
+        .category-select { padding: 8px 6px; font-size: 11.5px; max-width: 92px; }
+        .btn-submit { padding: 10px 16px; flex-shrink: 0; }
+        .btn-submit span { display: none; }
+    }
+
+    @media (max-width: 360px) {
+        .category-select { max-width: 74px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="mesh"><span></span><span></span><span></span></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+    <div class="logo">
+        <div class="logo-mark">MG</div>
+        <div class="logo-text">MGMCOET<span>Student Portal</span></div>
+    </div>
+    <div class="nav-section-label">Menu</div>
+    <ul class="nav-links">
+        <li><a href="#"><i class="fas fa-grip"></i> Dashboard</a></li>
+        <li><a href="#"><i class="fas fa-user"></i> My Profile</a></li>
+        <li><a href="#"><i class="fas fa-book"></i> Academics</a></li>
+        <li><a href="#"><i class="fas fa-comments"></i> Community</a></li>
+        <li><a href="#" class="active"><i class="fas fa-mask"></i> Confessions</a></li>
+    </ul>
+    <div class="profile-mini">
+        <div class="avatar">P</div>
+        <div class="info"><strong>Priyansh Kumar</strong><span>2200156</span></div>
+    </div>
+</nav>
+
+<!-- MAIN CONTAINER -->
+<div class="main-container">
+    
+    <!-- SCROLLABLE FEED AREA -->
+    <main class="feed-area" id="feedArea">
+        <div class="content-wrapper">
+            
+            <div class="page-header">
+                <div class="eyebrow"><span class="dot"></span> 100% Anonymous</div>
+                <h1>Confessions Wall</h1>
+                <p>Spill the tea, share a rant, or confess your crush. Nobody will know it's you.</p>
+            </div>
+
+            <div class="feed-header">
+                <h3>Recent Confessions</h3>
+                <div class="filter-tabs">
+                    <button class="filter-btn active">Latest</button>
+                    <button class="filter-btn">Top Voted</button>
+                </div>
+            </div>
+
+            <div class="feed-container" id="confessionFeed">
+                
+                <div class="confession-card" style="animation-delay: 0.1s;">
+                    <div class="c-header">
+                        <div class="c-author">
+                            <div class="anon-avatar">🕵️</div>
+                            <div class="c-author-info"><strong>Anonymous</strong><span>2 hours ago</span></div>
+                        </div>
+                        <span class="tag tag-crush">Crush</span>
+                    </div>
+                    <div class="c-body">
+                        To the girl who always sits in the second row during OS lectures (Batch B) and wears that blue hoodie... your smile literally makes my day. I wish I had the guts to say hi. 🥲
+                    </div>
+                    <div class="c-footer">
+                        <div class="action-group">
+                            <button class="action-btn" onclick="toggleUpvote(this)"><i class="far fa-heart"></i> <span class="count">42</span></button>
+                            <button class="action-btn" onclick="toggleComments(this)"><i class="far fa-comment"></i> <span class="c-count">1</span></button>
+                        </div>
+                        <button class="report-btn" title="Report"><i class="fas fa-flag"></i></button>
+                    </div>
+                    <div class="comments-section">
+                        <div class="comments-list">
+                            <div class="comment-item"><strong>👻 Anon:</strong> Bro just go and talk to her!</div>
+                        </div>
+                        <div class="comment-input-row">
+                            <input type="text" placeholder="Add a comment..." class="comment-input" onkeypress="handleCommentEnter(event, this)">
+                            <button class="btn-send-comment" onclick="postComment(this)"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confession-card" style="animation-delay: 0.2s;">
+                    <div class="c-header">
+                        <div class="c-author">
+                            <div class="anon-avatar">👽</div>
+                            <div class="c-author-info"><strong>Anonymous</strong><span>Yesterday</span></div>
+                        </div>
+                        <span class="tag tag-funny">Funny</span>
+                    </div>
+                    <div class="c-body">
+                        Someone left a half-eaten samosa on the library desk near the entrance. I've been staring at it for an hour. Is it a trap? A modern art piece? I need answers.
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" class="c-image" alt="Samosa joke">
+                    <div class="c-footer">
+                        <div class="action-group">
+                            <button class="action-btn" onclick="toggleUpvote(this)"><i class="far fa-heart"></i> <span class="count">89</span></button>
+                            <button class="action-btn" onclick="toggleComments(this)"><i class="far fa-comment"></i> <span class="c-count">0</span></button>
+                        </div>
+                        <button class="report-btn"><i class="fas fa-flag"></i></button>
+                    </div>
+                    <div class="comments-section">
+                        <div class="comments-list"></div>
+                        <div class="comment-input-row">
+                            <input type="text" placeholder="Add a comment..." class="comment-input" onkeypress="handleCommentEnter(event, this)">
+                            <button class="btn-send-comment" onclick="postComment(this)"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- FIXED BOTTOM SUBMIT BAR - FULL WIDTH DOCK STYLE -->
+    <div class="fixed-bottom-bar">
+        <div class="submit-box">
+            
+            <!-- Image Preview Box -->
+            <div class="image-preview-box" id="imagePreviewBox">
+                <button class="remove-image-btn" onclick="clearImage()"><i class="fas fa-times"></i></button>
+                <img id="imagePreview" src="" alt="Upload Preview">
+            </div>
+
+            <!-- Full-Width Colored Auto-resizing Textarea -->
+            <textarea class="confession-textarea" id="confessionInput" placeholder="Type your confession anonymously..." oninput="autoResize(this)"></textarea>
+            
+            <div class="submit-controls">
+                <div class="controls-left">
+                    <input type="file" id="fileUpload" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                    <button class="attach-btn" onclick="document.getElementById('fileUpload').click()" title="Attach Image">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <select class="category-select" id="confessionCategory">
+                        <option value="tag-crush">❤️ Crush</option>
+                        <option value="tag-rant">🔥 Rant</option>
+                        <option value="tag-funny">😂 Funny</option>
+                        <option value="tag-faculty">👨‍🏫 Faculty</option>
+                    </select>
+                </div>
+                <button class="btn-submit" onclick="postConfession()">
+                    <span>Post</span> <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- TEXTAREA AUTO RESIZE ---
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight < 150 ? textarea.scrollHeight : 150) + 'px';
+    }
+
+    // --- IMAGE UPLOAD PREVIEW ---
+    let uploadedImageSrc = null;
+
+    function previewImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImageSrc = e.target.result;
+                document.getElementById('imagePreview').src = uploadedImageSrc;
+                document.getElementById('imagePreviewBox').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function clearImage() {
+        uploadedImageSrc = null;
+        document.getElementById('fileUpload').value = '';
+        document.getElementById('imagePreviewBox').style.display = 'none';
+        document.getElementById('imagePreview').src = '';
+    }
+
+    // --- UPVOTE ---
+    function toggleUpvote(btn) {
+        btn.classList.toggle('upvoted');
+        const icon = btn.querySelector('i');
+        const countSpan = btn.querySelector('.count');
+        let count = parseInt(countSpan.textContent);
+
+        if (btn.classList.contains('upvoted')) {
+            icon.classList.remove('far'); icon.classList.add('fas');
+            countSpan.textContent = count + 1;
+        } else {
+            icon.classList.remove('fas'); icon.classList.add('far');
+            countSpan.textContent = count - 1;
+        }
+    }
+
+    // --- COMMENTS ---
+    function toggleComments(btn) {
+        const card = btn.closest('.confession-card');
+        const commentSection = card.querySelector('.comments-section');
+        if(commentSection.style.display === 'none' || commentSection.style.display === '') {
+            commentSection.style.display = 'block';
+            commentSection.querySelector('.comment-input').focus();
+        } else {
+            commentSection.style.display = 'none';
+        }
+    }
+
+    function handleCommentEnter(e, input) {
+        if (e.key === 'Enter') {
+            postComment(input.nextElementSibling);
+        }
+    }
+
+    function postComment(btn) {
+        const input = btn.previousElementSibling;
+        const text = input.value.trim();
+        if (!text) return;
+
+        const list = btn.closest('.comments-section').querySelector('.comments-list');
+        const newComment = document.createElement('div');
+        newComment.className = 'comment-item';
+        
+        const avatars = ['🕵️', '👻', '🤖', '🦊'];
+        const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+        
+        newComment.innerHTML = `<strong>${randomAvatar} Anon:</strong> ${text.replace(/</g, "&lt;")}`;
+        list.appendChild(newComment);
+        
+        // Update comment count
+        const card = btn.closest('.confession-card');
+        const countSpan = card.querySelector('.c-count');
+        countSpan.textContent = parseInt(countSpan.textContent) + 1;
+
+        // Scroll to bottom of comments list & clear input
+        list.scrollTop = list.scrollHeight;
+        input.value = '';
+    }
+
+    // --- POST NEW CONFESSION ---
+    function postConfession() {
+        const input = document.getElementById('confessionInput');
+        const categorySelect = document.getElementById('confessionCategory');
+        const feed = document.getElementById('confessionFeed');
+        const feedArea = document.getElementById('feedArea');
+        const text = input.value.trim();
+
+        if (!text && !uploadedImageSrc) {
+            alert('Please write something or attach an image!');
+            return;
+        }
+
+        const categoryClass = categorySelect.value;
+        const categoryText = categorySelect.options[categorySelect.selectedIndex].text.replace(/[^a-zA-Z]/g, '').trim();
+        const avatars = ['🕵️', '👻', '👽', '🤖', '🐱', '🎭'];
+        const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+
+        let imageHTML = '';
+        if (uploadedImageSrc) {
+            imageHTML = `<img src="${uploadedImageSrc}" class="c-image" alt="Attached Image">`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'confession-card';
+        card.style.animationDelay = '0s';
+        
+        card.innerHTML = `
+            <div class="c-header">
+                <div class="c-author">
+                    <div class="anon-avatar">${randomAvatar}</div>
+                    <div class="c-author-info">
+                        <strong>Anonymous</strong>
+                        <span>Just now</span>
+                    </div>
+                </div>
+                <span class="tag ${categoryClass}">${categoryText}</span>
+            </div>
+            ${text ? `<div class="c-body">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ''}
+            ${imageHTML}
+            <div class="c-footer">
+                <div class="action-group">
+                    <button class="action-btn" onclick="toggleUpvote(this)"><i class="far fa-heart"></i> <span class="count">0</span></button>
+                    <button class="action-btn" onclick="toggleComments(this)"><i class="far fa-comment"></i> <span class="c-count">0</span></button>
+                </div>
+                <button class="report-btn" title="Report"><i class="fas fa-flag"></i></button>
+            </div>
+            <div class="comments-section">
+                <div class="comments-list"></div>
+                <div class="comment-input-row">
+                    <input type="text" placeholder="Add a comment..." class="comment-input" onkeypress="handleCommentEnter(event, this)">
+                    <button class="btn-send-comment" onclick="postComment(this)"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        `;
+
+        // Add to top of feed
+        feed.prepend(card);
+        
+        // Reset Inputs & Scroll Top
+        input.value = '';
+        input.style.height = 'auto'; // Reset auto-resize
+        clearImage();
+        feedArea.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+</script>
+
+</body>
+</html>

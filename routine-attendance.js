@@ -93,6 +93,9 @@ function addSharedStyles() {
 function migrationHint(error) {
   console.error('Routine/attendance setup error:', error);
   const text = String(error?.message || error || '');
+  if (/set_student_class_preference|could not find the function|function .* does not exist/i.test(text)) {
+    return 'Class change ke liye schema_set_student_class_preference.sql ko isi Supabase project ke SQL Editor mein run karo, phir page reload karo.';
+  }
   if (/schema_class_schedule_attendance|timetable_classes|student_class_preferences|attendance_logs|relation .* does not exist/i.test(text)) {
     return 'Supabase setup pending hai. Pehle schema_class_schedule_attendance.sql ko Supabase SQL Editor mein run karo.';
   }
@@ -120,29 +123,94 @@ async function loadPreference() {
 }
 
 async function saveClassPreference(classId) {
-  const { error } = await supabase.from('student_class_preferences').upsert({
-    user_id: state.user.id,
-    class_id: classId,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  const selectedClass = state.classes.find((item) => item.id === classId);
+  if (!selectedClass) throw new Error('Selected class list mein nahi mili. Page reload karke dobara try karo.');
+
+  const { error } = await supabase.rpc('set_student_class_preference', {
+    p_class_id: classId,
+  });
   if (error) throw error;
-  state.selectedClass = state.classes.find((item) => item.id === classId) || null;
-  await loadSelectedClassData();
+
+  // The RPC validates and persists this exact class for auth.uid(). Update the
+  // current page from that successful selection instead of re-reading a stale
+  // preference response and accidentally keeping the previous class visible.
+  state.selectedClass = selectedClass;
+  state.entries = [];
+  state.logs = [];
+  updateStudentHeader();
+  renderCurrentPage();
+  await loadSelectedClassData(classId);
+  await loadDashboardAssignments();
+  renderCurrentPage();
 }
 
-async function loadSelectedClassData() {
-  if (!state.selectedClass) return;
+async function loadSelectedClassData(classId = state.selectedClass?.id) {
+  if (!classId) return;
   const [entryResult, logResult] = await Promise.all([
-    supabase.from('timetable_entries').select('*').eq('class_id', state.selectedClass.id)
+    supabase.from('timetable_entries').select('*').eq('class_id', classId)
       .order('day_of_week').order('period_no'),
     supabase.from('attendance_logs').select('id,student_id,class_id,timetable_entry_id,attendance_date,status,created_at')
-      .eq('student_id', state.user.id).eq('class_id', state.selectedClass.id)
+      .eq('student_id', state.user.id).eq('class_id', classId)
       .order('attendance_date', { ascending: false }).limit(1000),
   ]);
   if (entryResult.error) throw entryResult.error;
   if (logResult.error) throw logResult.error;
   state.entries = entryResult.data || [];
   state.logs = logResult.data || [];
+}
+
+function renderDashboardAssignments(items, error = '') {
+  const target = $('dashboardAssignments');
+  if (!target) return;
+  if (error) {
+    target.innerHTML = `<div class="assignment-empty">Assignments load nahi ho paaye. ${esc(error)}</div>`;
+    return;
+  }
+  if (!items.length) {
+    target.innerHTML = '<div class="assignment-empty">Abhi koi upcoming assignment nahi hai.</div>';
+    return;
+  }
+  target.innerHTML = items.map((item) => {
+    const date = new Date(item.due_at).toLocaleString('en-IN', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
+    return `<article class="dashboard-assignment"><h4>${esc(item.title || 'Assignment')}</h4><p>${esc(item.subjectName || 'Class assignment')} · Due ${esc(date)}</p></article>`;
+  }).join('');
+}
+
+async function loadDashboardAssignments() {
+  const target = $('dashboardAssignments');
+  if (!target || !state.selectedClass) return;
+  target.innerHTML = '<div class="assignment-empty">Loading assignments…</div>';
+  try {
+    const { data, error } = await supabase.from('academic_assignments')
+      .select('id,title,due_at,branch,year,subject_id').order('due_at', { ascending: true });
+    if (error) throw error;
+    const yearNo = Number(state.selectedClass.year_no);
+    const yearName = `${yearNo}${yearNo === 1 ? 'st' : yearNo === 2 ? 'nd' : yearNo === 3 ? 'rd' : 'th'} Year`.toLowerCase();
+    const matchesClass = (item) => {
+      const branch = String(item.branch || '').trim().toLowerCase();
+      const year = String(item.year || '').trim().toLowerCase();
+      const branchMatches = !branch || branch === 'cse' || branch.includes('computer science');
+      return branchMatches && (!year || year === yearName);
+    };
+    const now = Date.now();
+    const upcoming = (data || []).filter((item) => {
+      const due = item.due_at ? new Date(item.due_at).getTime() : NaN;
+      return matchesClass(item) && Number.isFinite(due) && due >= now;
+    }).slice(0, 5);
+    const subjectIds = [...new Set(upcoming.map((item) => item.subject_id).filter(Boolean))];
+    let subjectNames = {};
+    if (subjectIds.length) {
+      const subjectResult = await supabase.from('academic_subjects').select('id,name').in('id', subjectIds);
+      if (subjectResult.error) throw subjectResult.error;
+      subjectNames = Object.fromEntries((subjectResult.data || []).map((subject) => [subject.id, subject.name]));
+    }
+    renderDashboardAssignments(upcoming.map((item) => ({ ...item, subjectName: subjectNames[item.subject_id] })));
+  } catch (error) {
+    console.error('Dashboard assignments failed to load:', error);
+    renderDashboardAssignments([], error.message || 'Supabase se connect nahi ho paya.');
+  }
 }
 
 function openClassDialog(required = false) {
@@ -181,7 +249,15 @@ function openClassDialog(required = false) {
         renderCurrentPage();
         toast('Class save ho gayi. Routine personalize kar diya.');
       } catch (error) {
-        toast(migrationHint(error), true);
+        // Preference save ho chuki ho sakti hai, chahe timetable/log refresh fail ho.
+        // Aise mein purani class ka stale UI mat chhodo.
+        if (state.selectedClass?.id === id) {
+          backdrop.classList.remove('open');
+          renderCurrentPage();
+          toast(`Class save ho gayi, lekin routine/attendance refresh nahi hua. ${migrationHint(error)}`, true);
+        } else {
+          toast(migrationHint(error), true);
+        }
       } finally {
         button.disabled = false;
         button.textContent = 'Save class';
@@ -549,6 +625,7 @@ async function initialize(page) {
       return;
     }
     await loadSelectedClassData();
+    await loadDashboardAssignments();
     renderCurrentPage();
   } catch (error) {
     console.error(error);

@@ -14,3 +14,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
     storageKey: 'mgm-portal-auth'
   }
 });
+
+// Staff console keeps its browser session separate from the student portal.
+export function createStaffClient() {
+  return createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storageKey: 'mgm-academic-staff-auth'
+    }
+  });
+}

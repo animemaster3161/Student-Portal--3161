@@ -730,6 +730,7 @@
                 <button class="chip" data-category="holidays"><i class="fas fa-umbrella-beach"></i> Holidays</button>
                 <button class="chip" data-category="events"><i class="fas fa-calendar-star"></i> Events</button>
                 <button class="chip" data-category="placements"><i class="fas fa-briefcase"></i> Placements</button>
+                <button class="chip" data-category="general"><i class="fas fa-circle-info"></i> General</button>
             </div>
         </section>
 
@@ -744,6 +745,7 @@
     </main>
 
     <script type="module">
+        import { supabase } from './supabase-config.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -772,18 +774,31 @@
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             return `${d.getDate().toString().padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()}`;
         }
+        function escapeHTML(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function safeHref(value) { try { const url = new URL(value); return url.protocol === 'https:' ? url.href : ''; } catch { return ''; } }
 
         async function loadNotices() {
+            allNotices = [];
             try {
                 const querySnapshot = await getDocs(collection(db, "notices"));
-                allNotices = [];
                 querySnapshot.forEach((doc) => { allNotices.push({ id: doc.id, ...doc.data() }); });
-                allNotices.sort((a, b) => b.timestamp - a.timestamp);
-                renderNotices();
             } catch (error) {
                 console.error("Error fetching notices:", error);
-                loadingState.innerHTML = "Error loading notices. Check database setup.";
             }
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    const { data, error } = await supabase.from('academic_notices').select('*').order('created_at', { ascending: false });
+                    if (error) throw error;
+                    allNotices.push(...(data || []).map(item => ({
+                        id: item.id, title: item.title, text: item.body, category: item.category || 'general',
+                        level: 'college', fileUrl: item.file_url,
+                        timestamp: new Date(item.created_at).getTime()
+                    })));
+                }
+            } catch (error) { console.error('Academic notices failed to load:', error); }
+            allNotices.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+            renderNotices();
         }
 
         function renderNotices() {
@@ -801,17 +816,19 @@
                     if (r.category === 'holidays') iconClass = 'fa-umbrella-beach';
                     if (r.category === 'events') iconClass = 'fa-calendar-star';
                     if (r.category === 'placements') iconClass = 'fa-briefcase';
+                    if (r.category === 'general') iconClass = 'fa-circle-info';
+                    const fileUrl = safeHref(r.fileUrl);
 
                     const cardHtml = `
-                <div class="notice-card" data-level="${r.level}" data-category="${r.category}">
+                <div class="notice-card" data-level="${escapeHTML(r.level)}" data-category="${escapeHTML(r.category)}">
                     <div class="notice-top">
-                        <span class="cat-tag ${r.category}"><i class="fas ${iconClass}"></i> ${r.category}</span>
-                        <span class="level-tag">${r.level}</span>
+                        <span class="cat-tag ${escapeHTML(r.category)}"><i class="fas ${iconClass}"></i> ${escapeHTML(r.category)}</span>
+                        <span class="level-tag">${escapeHTML(r.level)}</span>
                     </div>
-                    <div class="notice-title">${r.title}</div>
+                    <div class="notice-title">${escapeHTML(r.title)}</div>
                     <div class="notice-date"><i class="fas fa-clock"></i> ${formatDate(r.timestamp)}</div>
-                    ${r.text ? `<div class="notice-desc">${r.text.replace(/\n/g, '<br>')}</div>` : ''}
-                    ${r.fileUrl ? `<a class="notice-cta" href="${r.fileUrl}" target="_blank" rel="noopener"><i class="fas fa-paperclip"></i> View Attached Document</a>` : ''}
+                    ${r.text ? `<div class="notice-desc">${escapeHTML(r.text).replace(/\n/g, '<br>')}</div>` : ''}
+                    ${fileUrl ? `<a class="notice-cta" href="${escapeHTML(fileUrl)}" target="_blank" rel="noopener"><i class="fas fa-paperclip"></i> View Attached Document</a>` : ''}
                 </div>`;
                     emptyState.insertAdjacentHTML('beforebegin', cardHtml);
                 }

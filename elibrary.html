@@ -631,6 +631,22 @@
       color: var(--indigo);
       border-color: transparent
     }
+    .share-btn.delete-btn { color:#c0392b; }
+    .share-btn.delete-btn:hover { color:#fff; background:#c0392b; }
+
+    .viewer-overlay { position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(15,27,51,.72); }
+    .viewer-overlay.open { display:flex; }
+    .viewer-panel { width:min(1100px,100%); height:min(900px,calc(100dvh - 36px)); display:flex; flex-direction:column; overflow:hidden; border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); }
+    .viewer-toolbar { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); }
+    .viewer-toolbar strong { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .viewer-toolbar a,.viewer-toolbar button,.share-option { border:1px solid var(--border); background:var(--surface-alt); color:var(--ink); border-radius:9px; padding:9px 12px; font:600 12px 'Inter',sans-serif; text-decoration:none; cursor:pointer; }
+    .viewer-toolbar button { font-size:20px; line-height:1; }
+    .viewer-content { flex:1; min-height:0; background:#20242c; }
+    .viewer-content iframe { width:100%; height:100%; border:0; background:#fff; }
+    .viewer-content img { display:block; max-width:100%; max-height:100%; margin:auto; object-fit:contain; }
+    .share-options { display:grid; gap:10px; }
+    .share-option { display:block; width:100%; text-align:left; }
+    @media(max-width:600px) { .viewer-overlay { padding:0; } .viewer-panel { width:100%; height:100dvh; border-radius:0; } .viewer-toolbar { padding:9px; gap:6px; } .viewer-toolbar a,.viewer-toolbar button { padding:8px; font-size:11px; } }
 
     .empty-state {
       grid-column: 1/-1;
@@ -933,6 +949,7 @@
 
         <label for="fFile">Upload PDF / Document</label>
         <input type="file" id="fFile" accept=".pdf, .doc, .docx, image/*" required>
+        <small style="display:block; margin-top:6px; color:#777;">Maximum file size: 100 MB</small>
 
         <button type="submit" class="modal-submit" id="submitBtn"><i class="fas fa-cloud-arrow-up"></i> Upload & Add
           Resource</button>
@@ -941,12 +958,31 @@
     </div>
   </div>
 
+  <div class="viewer-overlay" id="viewerOverlay" role="dialog" aria-modal="true" aria-label="Resource viewer">
+    <section class="viewer-panel">
+      <div class="viewer-toolbar"><strong id="viewerTitle"></strong><a id="viewerOpenLink" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Open</a><a id="viewerDownloadLink" download><i class="fas fa-download"></i> Download</a><button type="button" id="viewerClose" aria-label="Close viewer">&times;</button></div>
+      <div class="viewer-content" id="viewerContent"></div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="shareOverlay">
+    <div class="modal-card">
+      <h3>Share resource</h3><div class="m-sub" id="shareResourceTitle"></div>
+      <div class="share-options">
+        <button class="share-option" id="copyShareLink"><i class="fas fa-link"></i> Copy public viewer link</button>
+        <a class="share-option" id="communityShareLink"><i class="fas fa-paper-plane"></i> Send to Community chat or group</a>
+      </div>
+      <button type="button" class="modal-close" id="shareClose">Close</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast"><i class="fas fa-paper-plane"></i> <span id="toastMsg">Action Successful</span></div>
 
   <script type="module">
+    import { supabase } from "./supabase-config.js";
     // Firebase SDKs Import
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // --- YOUR EXACT FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -986,6 +1022,48 @@
     let resources = [];
     let activeCat = 'All';
     let searchTerm = '';
+    let selectedShareResource = null;
+    let currentUser = null;
+
+    function resourcePageUrl(resource) {
+      const url = new URL('elibrary.html', location.href);
+      url.searchParams.set('resource', resource.id);
+      return url.href;
+    }
+
+    function openResource(resource) {
+      if (!resource || !resource.link) return;
+      document.getElementById('viewerTitle').textContent = resource.title || 'Resource';
+      document.getElementById('viewerOpenLink').href = resource.link;
+      document.getElementById('viewerDownloadLink').href = resource.link;
+      const content = document.getElementById('viewerContent');
+      content.replaceChildren();
+      if (resource.mime === 'application/pdf' || /\.pdf(?:$|[?#])/i.test(resource.link)) {
+        const frame = document.createElement('iframe');
+        frame.src = resource.link;
+        frame.title = resource.title || 'PDF viewer';
+        content.appendChild(frame);
+      } else if ((resource.mime || '').startsWith('image/')) {
+        const image = document.createElement('img');
+        image.src = resource.link; image.alt = resource.title || 'Resource preview';
+        content.appendChild(image);
+      } else {
+        const note = document.createElement('p');
+        note.textContent = 'Preview is unavailable for this file type. Use Open or Download above.';
+        note.style.cssText = 'color:#fff;padding:24px;text-align:center';
+        content.appendChild(note);
+      }
+      document.getElementById('viewerOverlay').classList.add('open');
+    }
+
+    function openShare(resource) {
+      if (!resource) return;
+      selectedShareResource = resource;
+      const link = resourcePageUrl(resource);
+      document.getElementById('shareResourceTitle').textContent = resource.title || 'Resource';
+      document.getElementById('communityShareLink').href = `community.html?share=${encodeURIComponent(link)}`;
+      document.getElementById('shareOverlay').classList.add('open');
+    }
 
     // 1. Fetch Resources from Firebase Firestore
     async function loadResources() {
@@ -1015,8 +1093,9 @@
       <div class="res-author">${r.author}</div>
       <div class="res-rating"><i class="fas fa-star"></i> ${r.rating.toFixed(1)}/5</div>
       <div class="res-actions">
-        <a class="dl-btn" href="${r.link}" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Open / Download</a>
-        <button class="share-btn" data-share="${r.title.replace(/"/g, '&quot;')}"><i class="fas fa-paper-plane"></i></button>
+        <button class="dl-btn" type="button" data-open-resource="${r.id}"><i class="fas fa-book-open"></i> View</button>
+        <button class="share-btn" type="button" data-share-resource="${r.id}" aria-label="Share ${r.title.replace(/"/g, '&quot;')}"><i class="fas fa-share-nodes"></i></button>
+        ${currentUser && r.ownerId === currentUser.id ? `<button class="share-btn delete-btn" type="button" data-delete-resource="${r.id}" aria-label="Delete ${r.title.replace(/"/g, '&quot;')}" title="Delete your upload"><i class="fas fa-trash"></i></button>` : ''}
       </div>
     </div>`;
     }
@@ -1033,9 +1112,24 @@
         return;
       }
       grid.innerHTML = filtered.map(cardHTML).join('');
-      grid.querySelectorAll('[data-share]').forEach(btn => {
-        btn.addEventListener('click', () => showToast(`Shared "${btn.dataset.share}" to Student Community`));
-      });
+      grid.querySelectorAll('[data-open-resource]').forEach(btn => btn.addEventListener('click', () => openResource(resources.find(r => r.id === btn.dataset.openResource))));
+      grid.querySelectorAll('[data-share-resource]').forEach(btn => btn.addEventListener('click', () => openShare(resources.find(r => r.id === btn.dataset.shareResource))));
+      grid.querySelectorAll('[data-delete-resource]').forEach(btn => btn.addEventListener('click', () => deleteResource(btn.dataset.deleteResource)));
+    }
+
+    async function deleteResource(resourceId) {
+      const resource = resources.find(r => r.id === resourceId);
+      if (!resource || !currentUser || resource.ownerId !== currentUser.id) return;
+      if (!confirm(`Delete "${resource.title}" from the eLibrary?`)) return;
+      try {
+        await deleteDoc(doc(db, 'elibrary_resources', resource.id));
+        resources = resources.filter(r => r.id !== resource.id);
+        render();
+        showToast('Your resource was deleted');
+      } catch (error) {
+        console.error('Resource delete failed:', error);
+        alert('Could not delete this resource: ' + error.message);
+      }
     }
 
     // UI Event Listeners
@@ -1065,6 +1159,17 @@
     document.getElementById('contributeBtn').addEventListener('click', () => overlay.classList.add('open'));
     document.getElementById('modalClose').addEventListener('click', () => overlay.classList.remove('open'));
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+    const viewerOverlay = document.getElementById('viewerOverlay');
+    document.getElementById('viewerClose').addEventListener('click', () => viewerOverlay.classList.remove('open'));
+    viewerOverlay.addEventListener('click', e => { if (e.target === viewerOverlay) viewerOverlay.classList.remove('open'); });
+    document.getElementById('shareClose').addEventListener('click', () => document.getElementById('shareOverlay').classList.remove('open'));
+    document.getElementById('shareOverlay').addEventListener('click', e => { if (e.target.id === 'shareOverlay') e.currentTarget.classList.remove('open'); });
+    document.getElementById('copyShareLink').addEventListener('click', async () => {
+      if (!selectedShareResource) return;
+      try { await navigator.clipboard.writeText(resourcePageUrl(selectedShareResource)); showToast('Public viewer link copied'); }
+      catch { showToast('Link copy nahi hua. Browser permission check karein.'); }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { viewerOverlay.classList.remove('open'); document.getElementById('shareOverlay').classList.remove('open'); } });
 
     // 2. Upload to Cloudinary & Save to Firebase
     document.getElementById('contributeForm').addEventListener('submit', async (e) => {
@@ -1076,6 +1181,16 @@
       const submitBtn = document.getElementById('submitBtn');
 
       if (!title || !fileInput) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      currentUser = session?.user || null;
+      if (!currentUser) {
+        alert('Please sign in before uploading so you can manage and delete your own resources.');
+        return;
+      }
+      if (fileInput.size > 100 * 1024 * 1024) {
+        alert('File must be 100 MB or smaller.');
+        return;
+      }
 
       submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading File...';
       submitBtn.disabled = true;
@@ -1106,7 +1221,9 @@
           title: title,
           category: category,
           link: fileUrl,
-          author: 'Student Contributor',
+          mime: fileInput.type,
+          ownerId: currentUser.id,
+          author: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Student Contributor',
           rating: 5.0,
           timestamp: Date.now()
         });
@@ -1128,7 +1245,13 @@
     });
 
     // Initial Load Call
-    loadResources();
+    const { data: { session } } = await supabase.auth.getSession();
+    currentUser = session?.user || null;
+    supabase.auth.onAuthStateChange((_event, session) => { currentUser = session?.user || null; render(); });
+    loadResources().then(() => {
+      const requestedId = new URLSearchParams(location.search).get('resource');
+      if (requestedId) openResource(resources.find(r => r.id === requestedId));
+    });
   </script>
 </body>
 

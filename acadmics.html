@@ -1,540 +1,2700 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<script>if(window.top!==window.self){document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important}</style>');}</script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Student Portal | Academics</title>
+    <script>if (window.top !== window.self) { document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important;padding-bottom:40px!important}.mobile-nav{display:none!important}</style>'); }</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Student Portal | Academics</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<style>
-    :root {
-        --bg-base: #EEF3FD;
-        --surface: #FFFFFF;
-        --surface-alt: #F2F6FE;
-        --ink: #0F1B33;
-        --ink-soft: #536079;
-        --ink-faint: #96A1BC;
+    <style>
+        :root {
+            --bg-base: #EEF3FD;
+            --surface: #FFFFFF;
+            --surface-alt: #F2F6FE;
+            --ink: #0F1B33;
+            --ink-soft: #536079;
+            --ink-faint: #96A1BC;
 
-        --blue: #2E5CE6;
-        --blue-light: #6C93FF;
-        --blue-deep: #1A38A6;
-        --blue-wash: rgba(46, 92, 230, 0.09);
+            --blue: #2E5CE6;
+            --blue-light: #6C93FF;
+            --blue-deep: #1A38A6;
+            --blue-wash: rgba(46, 92, 230, 0.09);
 
-        --indigo: #6355E0;
-        --indigo-light: #9088F0;
-        --indigo-wash: rgba(99, 85, 224, 0.09);
+            --indigo: #6355E0;
+            --indigo-light: #9088F0;
+            --indigo-wash: rgba(99, 85, 224, 0.09);
 
-        --cyan: #0DA5C0;
-        --cyan-light: #4FD3E8;
-        --cyan-wash: rgba(13, 165, 192, 0.09);
+            --cyan: #0DA5C0;
+            --cyan-light: #4FD3E8;
+            --cyan-wash: rgba(13, 165, 192, 0.09);
 
-        --amber: #D6900F;
-        --amber-light: #F0B94A;
-        --amber-wash: rgba(214, 144, 15, 0.11);
+            --amber: #D6900F;
+            --amber-light: #F0B94A;
+            --amber-wash: rgba(214, 144, 15, 0.11);
 
-        --danger: #E14A3B;
-        --danger-light: #F28E7C;
-        --danger-wash: rgba(225, 74, 59, 0.08);
+            --danger: #E14A3B;
+            --danger-light: #F28E7C;
+            --danger-wash: rgba(225, 74, 59, 0.08);
 
-        --success: #1DA35F;
-        --success-wash: rgba(29, 163, 95, 0.1);
-        --border: rgba(15, 27, 51, 0.08);
+            --success: #1DA35F;
+            --success-wash: rgba(29, 163, 95, 0.1);
+            --border: rgba(15, 27, 51, 0.08);
 
-        --shadow-sm: 0 2px 10px rgba(15, 27, 51, 0.05);
-        --shadow-md: 0 14px 32px rgba(15, 27, 51, 0.08);
-        --shadow-lg: 0 26px 56px rgba(20, 40, 100, 0.16);
+            --shadow-sm: 0 2px 10px rgba(15, 27, 51, 0.05);
+            --shadow-md: 0 14px 32px rgba(15, 27, 51, 0.08);
+            --shadow-lg: 0 26px 56px rgba(20, 40, 100, 0.16);
 
-        --sidebar-width: 272px;
-        --ease: cubic-bezier(.22, 1, .36, 1);
-    }
+            --sidebar-width: 272px;
+            --ease: cubic-bezier(.22, 1, .36, 1);
+        }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-        font-family: 'Inter', sans-serif;
-        background: var(--bg-base);
-        color: var(--ink);
-        display: flex;
-        min-height: 100vh;
-        -webkit-font-smoothing: antialiased;
-        position: relative;
-        overflow-x: hidden;
-    }
+        html {
+            scroll-behavior: smooth;
+        }
 
-    .mesh { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-    .mesh span { position: absolute; border-radius: 50%; filter: blur(95px); opacity: 0.55; animation: drift 24s ease-in-out infinite alternate; }
-    .mesh span:nth-child(1) { width: 560px; height: 560px; top: -180px; right: -140px; background: radial-gradient(circle, rgba(46,92,230,0.30), transparent 70%); }
-    .mesh span:nth-child(2) { width: 460px; height: 460px; bottom: -160px; left: 18%; background: radial-gradient(circle, rgba(99,85,224,0.20), transparent 70%); animation-delay: -8s; }
-    .mesh span:nth-child(3) { width: 420px; height: 420px; top: 32%; right: 8%; background: radial-gradient(circle, rgba(13,165,192,0.18), transparent 70%); animation-delay: -14s; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-base);
+            color: var(--ink);
+            display: flex;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            overflow-x: hidden;
+        }
 
-    ::selection { background: var(--blue-light); color: #fff; }
-    a { color: inherit; }
-    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--blue-light); outline-offset: 3px; border-radius: 8px; }
+        .mesh {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
 
-    /* ============ SIDEBAR ============ */
-    .sidebar {
-        width: var(--sidebar-width);
-        background: linear-gradient(180deg, #0A1230 0%, #101E4C 55%, #142A63 100%);
-        padding: 30px 20px;
-        display: flex;
-        flex-direction: column;
-        position: fixed;
-        height: 100vh;
-        z-index: 10;
-        overflow: hidden;
-    }
-    .sidebar::before {
-        content: "";
-        position: absolute;
-        width: 320px; height: 320px;
-        top: -110px; left: -110px;
-        background: radial-gradient(circle, rgba(108,147,255,0.25), transparent 70%);
-        filter: blur(40px);
-        pointer-events: none;
-    }
-    .sidebar > * { position: relative; z-index: 1; }
+        .mesh span {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(95px);
+            opacity: 0.55;
+            animation: drift 24s ease-in-out infinite alternate;
+        }
 
-    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding: 0 6px; }
-    .logo-mark {
-        width: 42px; height: 42px;
-        border-radius: 13px;
-        background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
-        display: flex; align-items: center; justify-content: center;
-        color: #fff;
-        font-family: 'Sora', sans-serif;
-        font-weight: 700;
-        font-size: 15px;
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 10px 22px rgba(46,92,230,0.4);
-        flex-shrink: 0;
-    }
-    .logo-text { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 16.5px; color: #fff; letter-spacing: 0.2px; line-height: 1.15; }
-    .logo-text span { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.4px; margin-top: 2px; }
+        .mesh span:nth-child(1) {
+            width: 560px;
+            height: 560px;
+            top: -180px;
+            right: -140px;
+            background: radial-gradient(circle, rgba(46, 92, 230, 0.30), transparent 70%);
+        }
 
-    .nav-section-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; color: rgba(255,255,255,0.32); text-transform: uppercase; margin: 32px 12px 12px; }
+        .mesh span:nth-child(2) {
+            width: 460px;
+            height: 460px;
+            bottom: -160px;
+            left: 18%;
+            background: radial-gradient(circle, rgba(99, 85, 224, 0.20), transparent 70%);
+            animation-delay: -8s;
+        }
 
-    .nav-links { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-    .nav-links li a {
-        text-decoration: none;
-        color: rgba(255,255,255,0.64);
-        font-weight: 500;
-        font-size: 14.5px;
-        display: flex;
-        align-items: center;
-        gap: 13px;
-        padding: 11px 14px;
-        border-radius: 12px;
-        position: relative;
-        transition: color .25s var(--ease), background-color .25s var(--ease), transform .25s var(--ease);
-    }
-    .nav-links li a i { width: 18px; text-align: center; font-size: 15px; }
-    .nav-links li a:hover { background: rgba(255,255,255,0.07); color: #fff; transform: translateX(2px); }
-    .nav-links li a.active {
-        background: linear-gradient(120deg, var(--blue-light), var(--blue));
-        color: #fff;
-        box-shadow: 0 10px 24px rgba(46,92,230,0.38);
-    }
+        .mesh span:nth-child(3) {
+            width: 420px;
+            height: 420px;
+            top: 32%;
+            right: 8%;
+            background: radial-gradient(circle, rgba(13, 165, 192, 0.18), transparent 70%);
+            animation-delay: -14s;
+        }
 
-    .profile-mini {
-        margin-top: auto;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px;
-        border-radius: 15px;
-        background: rgba(255,255,255,0.07);
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-    .profile-mini .avatar {
-        width: 38px; height: 38px; border-radius: 50%;
-        background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
-        display: flex; align-items: center; justify-content: center;
-        font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: #fff;
-        flex-shrink: 0;
-    }
-    .profile-mini .info { flex: 1; min-width: 0; }
-    .profile-mini .info strong { display: block; font-size: 13px; color: #fff; font-weight: 600; }
-    .profile-mini .info span { font-size: 11.5px; color: rgba(255,255,255,0.42); font-family: 'JetBrains Mono', monospace; }
-    .profile-mini i { color: rgba(255,255,255,0.42); cursor: pointer; }
+        ::selection {
+            background: var(--blue-light);
+            color: #fff;
+        }
 
-    /* ============ MAIN ============ */
-    .main-content { margin-left: var(--sidebar-width); padding: 36px 46px 60px; width: calc(100% - var(--sidebar-width)); position: relative; z-index: 1; }
+        a {
+            color: inherit;
+        }
 
-    /* ---- Page header ---- */
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-    .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; color: var(--blue); letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 0 rgba(29,163,95,0.45); animation: dotPulse 2.4s infinite; }
-    .page-header h1 { font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.4px; }
+        a:focus-visible,
+        button:focus-visible,
+        summary:focus-visible {
+            outline: 2px solid var(--blue-light);
+            outline-offset: 3px;
+            border-radius: 8px;
+        }
 
-    .back-btn {
-        display: inline-flex; align-items: center; gap: 9px;
-        background: var(--surface); border: 1px solid var(--border); color: var(--ink-soft);
-        font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13.5px;
-        padding: 10px 18px 10px 14px; border-radius: 12px; cursor: pointer;
-        box-shadow: var(--shadow-sm); transition: transform .25s var(--ease), box-shadow .25s var(--ease), color .25s var(--ease);
-    }
-    .back-btn:hover { transform: translateX(-3px); box-shadow: var(--shadow-md); color: var(--blue); }
+        /* ============ SIDEBAR ============ */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #0A1230 0%, #101E4C 55%, #142A63 100%);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 10;
+            overflow: hidden;
+        }
 
-    /* ============ VIEWS ============ */
-    .view { display: none; }
-    .view.active { display: block; opacity: 0; transform: translateY(12px); animation: cardIn .45s var(--ease) forwards; }
+        .sidebar::before {
+            content: "";
+            position: absolute;
+            width: 320px;
+            height: 320px;
+            top: -110px;
+            left: -110px;
+            background: radial-gradient(circle, rgba(108, 147, 255, 0.25), transparent 70%);
+            filter: blur(40px);
+            pointer-events: none;
+        }
 
-    /* ---- VIEW 1: Subject grid ---- */
-    .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+        .sidebar>* {
+            position: relative;
+            z-index: 1;
+        }
 
-    .subject-card {
-        background: var(--surface); border-radius: 20px; padding: 24px;
-        border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-        transition: transform .35s var(--ease), box-shadow .35s var(--ease);
-        display: flex; flex-direction: column; gap: 16px;
-    }
-    .subject-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            padding: 0 6px;
+        }
 
-    .subject-head { display: flex; align-items: center; gap: 13px; }
-    .subject-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; flex-shrink: 0; }
-    .icon-indigo { background: linear-gradient(145deg, var(--indigo-light), var(--indigo)); box-shadow: 0 8px 16px rgba(99,85,224,0.3); }
-    .icon-blue { background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); box-shadow: 0 8px 16px rgba(46,92,230,0.3); }
-    .icon-cyan { background: linear-gradient(145deg, var(--cyan-light), var(--cyan)); box-shadow: 0 8px 16px rgba(13,165,192,0.3); }
-    .icon-amber { background: linear-gradient(145deg, var(--amber-light), var(--amber)); box-shadow: 0 8px 16px rgba(214,144,15,0.3); }
-    .subject-head h3 { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; }
-    .subject-head p { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-faint); margin-top: 3px; }
+        .logo-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: 13px;
+            background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 22px rgba(46, 92, 230, 0.4);
+            flex-shrink: 0;
+        }
 
-    .subject-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-    .btn {
-        border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12.5px;
-        padding: 11px 12px; border-radius: 11px; display: flex; align-items: center; justify-content: center; gap: 7px;
-        transition: transform .25s var(--ease), box-shadow .25s var(--ease), background .25s var(--ease), color .25s var(--ease);
-        text-decoration: none;
-    }
-    .btn-ghost { background: var(--surface-alt); color: var(--ink); }
-    .btn-ghost:hover { background: var(--blue-wash); color: var(--blue); transform: translateY(-2px); }
-    .btn-primary { grid-column: 1 / -1; background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); color: #fff; box-shadow: 0 10px 22px rgba(46,92,230,0.32); }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(46,92,230,0.4); }
+        .logo-text {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 16.5px;
+            color: #fff;
+            letter-spacing: 0.2px;
+            line-height: 1.15;
+        }
 
-    .pyq-toggle { border-top: 1px solid var(--border); padding-top: 14px; }
-    .pyq-toggle summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
-    .pyq-toggle summary::-webkit-details-marker { display: none; }
-    .pyq-toggle summary i { transition: transform .25s var(--ease); font-size: 11px; }
-    .pyq-toggle[open] summary i { transform: rotate(180deg); }
-    .pyq-links { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-    .pyq-links a { font-size: 12.5px; color: var(--ink); background: var(--surface-alt); padding: 9px 12px; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; transition: background .2s var(--ease), color .2s var(--ease); }
-    .pyq-links a:hover { background: var(--indigo-wash); color: var(--indigo); }
+        .logo-text span {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 0.4px;
+            margin-top: 2px;
+        }
 
-    /* ---- VIEW 2: Chapter list ---- */
-    .chapter-list { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
-    .chapter-item {
-        background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-        padding: 16px 20px; display: flex; align-items: center; gap: 18px; box-shadow: var(--shadow-sm);
-        transition: box-shadow .3s var(--ease), transform .3s var(--ease);
-    }
-    .chapter-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-    .chapter-num { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-alt); color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .chapter-info { flex: 1; min-width: 0; }
-    .chapter-info h4 { font-family: 'Sora', sans-serif; font-size: 14.5px; font-weight: 700; }
-    .chapter-info p { font-size: 12px; color: var(--ink-faint); margin-top: 3px; }
-    .chapter-item.done .chapter-num { background: var(--success-wash); color: var(--success); }
-    .chapter-actions { display: flex; gap: 8px; flex-shrink: 0; }
-    .chapter-actions .btn { padding: 9px 14px; }
-    .btn-watch { background: linear-gradient(145deg, var(--blue-light), var(--blue-deep)); color: #fff; box-shadow: 0 8px 18px rgba(46,92,230,0.3); }
-    .btn-watch:hover { transform: translateY(-2px); }
+        .nav-section-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.32);
+            text-transform: uppercase;
+            margin: 32px 12px 12px;
+        }
 
-    /* ---- VIEW 3: Video Study Room ---- */
-    .study-room { display: flex; gap: 22px; margin-top: 22px; align-items: flex-start; }
-    .video-panel { flex: 0 0 70%; min-width: 0; }
-    .video-frame { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 18px; overflow: hidden; background: #0A1230; box-shadow: var(--shadow-lg); }
-    .video-frame iframe { width: 100%; height: 100%; border: none; }
-    .now-playing { margin-top: 16px; }
-    .now-playing h3 { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; }
-    .now-playing p { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
+        .nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
 
-    .playlist-panel { flex: 0 0 30%; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; box-shadow: var(--shadow-sm); }
-    .playlist-panel h4 { font-family: 'Sora', sans-serif; font-size: 13.5px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
-    .playlist-item {
-        display: flex; align-items: center; gap: 11px; padding: 11px 10px; border-radius: 11px; cursor: pointer;
-        transition: background .2s var(--ease); margin-bottom: 4px;
-    }
-    .playlist-item:hover { background: var(--surface-alt); }
-    .playlist-item.active { background: var(--blue-wash); }
-    .playlist-item .p-num { width: 26px; height: 26px; border-radius: 8px; background: var(--surface-alt); color: var(--ink-faint); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .playlist-item.active .p-num { background: var(--blue); color: #fff; }
-    .playlist-item.completed .p-num { background: var(--success-wash); color: var(--success); }
-    .playlist-item.completed .p-num i { font-size: 10.5px; }
-    .playlist-item .p-title { font-size: 12.5px; font-weight: 600; color: var(--ink); flex: 1; }
-    .playlist-item.active .p-title { color: var(--blue-deep); }
+        .nav-links li a {
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.64);
+            font-weight: 500;
+            font-size: 14.5px;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 11px 14px;
+            border-radius: 12px;
+            position: relative;
+            transition: color .25s var(--ease), background-color .25s var(--ease), transform .25s var(--ease);
+        }
 
-    /* ============ KEYFRAMES ============ */
-    @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
-    @keyframes dotPulse { 0% { box-shadow: 0 0 0 0 rgba(29,163,95,0.45); } 70% { box-shadow: 0 0 0 9px rgba(29,163,95,0); } 100% { box-shadow: 0 0 0 0 rgba(29,163,95,0); } }
-    @keyframes drift { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-40px, 30px) scale(1.08); } }
+        .nav-links li a i {
+            width: 18px;
+            text-align: center;
+            font-size: 15px;
+        }
 
-    @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
-        .view.active, .subject-card { opacity: 1; transform: none; }
-    }
+        .nav-links li a:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: #fff;
+            transform: translateX(2px);
+        }
 
-    /* ============ RESPONSIVE ============ */
-    @media (max-width: 1080px) {
-        .study-room { flex-direction: column; }
-        .video-panel, .playlist-panel { flex: 1 1 100%; width: 100%; }
-    }
-    @media (max-width: 780px) {
-        .sidebar { display: none; }
-        .main-content { margin-left: 0; width: 100%; padding: 22px; }
-        .subject-grid { grid-template-columns: 1fr; }
-        .chapter-item { flex-wrap: wrap; }
-        .chapter-actions { width: 100%; justify-content: flex-start; }
-    }
-</style>
+        .nav-links li a.active {
+            background: linear-gradient(120deg, var(--blue-light), var(--blue));
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(46, 92, 230, 0.38);
+        }
+
+        .profile-mini {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-mini .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .profile-mini .info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-mini .info strong {
+            display: block;
+            font-size: 13px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .profile-mini .info span {
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, 0.42);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .profile-mini i {
+            color: rgba(255, 255, 255, 0.42);
+            cursor: pointer;
+        }
+
+        /* ============ MAIN ============ */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 36px 46px 60px;
+            width: calc(100% - var(--sidebar-width));
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ---- Page header ---- */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--blue);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .eyebrow .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 0 rgba(29, 163, 95, 0.45);
+            animation: dotPulse 2.4s infinite;
+        }
+
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--ink-soft);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 13.5px;
+            padding: 10px 18px 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform .25s var(--ease), box-shadow .25s var(--ease), color .25s var(--ease);
+        }
+
+        .back-btn:hover {
+            transform: translateX(-3px);
+            box-shadow: var(--shadow-md);
+            color: var(--blue);
+        }
+
+        /* ============ VIEWS ============ */
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: cardIn .45s var(--ease) forwards;
+        }
+
+        /* ---- VIEW 1: Subject grid ---- */
+        .subject-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+            gap: 22px;
+        }
+
+        .subject-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .subject-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .subject-head {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .subject-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .icon-indigo {
+            background: linear-gradient(145deg, var(--indigo-light), var(--indigo));
+            box-shadow: 0 8px 16px rgba(99, 85, 224, 0.3);
+        }
+
+        .icon-blue {
+            background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
+            box-shadow: 0 8px 16px rgba(46, 92, 230, 0.3);
+        }
+
+        .icon-cyan {
+            background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
+            box-shadow: 0 8px 16px rgba(13, 165, 192, 0.3);
+        }
+
+        .icon-amber {
+            background: linear-gradient(145deg, var(--amber-light), var(--amber));
+            box-shadow: 0 8px 16px rgba(214, 144, 15, 0.3);
+        }
+
+        .subject-head h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .subject-head p {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            color: var(--ink-faint);
+            margin-top: 3px;
+        }
+
+        .subject-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .btn {
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 12.5px;
+            padding: 11px 12px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: transform .25s var(--ease), box-shadow .25s var(--ease), background .25s var(--ease), color .25s var(--ease);
+            text-decoration: none;
+        }
+
+        .btn-ghost {
+            background: var(--surface-alt);
+            color: var(--ink);
+        }
+
+        .btn-ghost:hover {
+            background: var(--blue-wash);
+            color: var(--blue);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            grid-column: 1 / -1;
+            background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(46, 92, 230, 0.32);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(46, 92, 230, 0.4);
+        }
+
+        .pyq-toggle {
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        .pyq-toggle summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+
+        .pyq-toggle summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .pyq-toggle summary i {
+            transition: transform .25s var(--ease);
+            font-size: 11px;
+        }
+
+        .pyq-toggle[open] summary i {
+            transform: rotate(180deg);
+        }
+
+        .pyq-links {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .pyq-links a {
+            font-size: 12.5px;
+            color: var(--ink);
+            background: var(--surface-alt);
+            padding: 9px 12px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background .2s var(--ease), color .2s var(--ease);
+        }
+
+        .pyq-links a:hover {
+            background: var(--indigo-wash);
+            color: var(--indigo);
+        }
+
+        /* ---- Continue learning card ---- */
+        .continue-card {
+            display: none;
+            position: relative;
+            overflow: hidden;
+            margin: 4px 0 24px;
+            padding: 22px 24px;
+            border-radius: 20px;
+            color: #fff;
+            background: linear-gradient(120deg, #101E4C 0%, #2449B8 65%, #3778E8 100%);
+            box-shadow: 0 16px 34px rgba(35, 75, 180, .20);
+        }
+
+        .continue-card.visible {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .continue-card::after {
+            content: "";
+            position: absolute;
+            width: 210px;
+            height: 210px;
+            right: 16%;
+            top: -130px;
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 50%;
+            box-shadow: 0 0 0 28px rgba(255, 255, 255, .035), 0 0 0 58px rgba(255, 255, 255, .025);
+            pointer-events: none;
+        }
+
+        .continue-copy {
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .continue-kicker {
+            font-size: 10px;
+            letter-spacing: 1.7px;
+            font-weight: 800;
+            color: #C9D8FF;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .continue-card h2 {
+            font-family: 'Sora', sans-serif;
+            font-size: clamp(17px, 2vw, 22px);
+            line-height: 1.35;
+            margin-bottom: 5px;
+        }
+
+        .continue-card p {
+            color: #DCE6FF;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+
+        .continue-progress {
+            width: min(360px, 100%);
+            margin-top: 13px;
+        }
+
+        .continue-progress-track {
+            height: 7px;
+            border-radius: 99px;
+            background: rgba(255, 255, 255, .22);
+            overflow: hidden;
+        }
+
+        .continue-progress-fill {
+            height: 100%;
+            background: #FF4D55;
+            border-radius: inherit;
+            transition: width .25s ease;
+        }
+
+        .continue-progress-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #E5ECFF;
+        }
+
+        .continue-card .btn-continue {
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            border: 0;
+            border-radius: 11px;
+            padding: 12px 16px;
+            background: #fff;
+            color: #173A9B;
+            font: 700 12px 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, .12);
+        }
+
+        .continue-card .btn-continue:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 640px) {
+            .continue-card.visible {
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 19px;
+            }
+
+            .continue-card .btn-continue {
+                width: 100%;
+            }
+        }
+
+        /* ---- VIEW 2: Chapter list ---- */
+        .chapter-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .chapter-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow .3s var(--ease), transform .3s var(--ease);
+        }
+
+        .chapter-item:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .chapter-num {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--surface-alt);
+            color: var(--ink-soft);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .chapter-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chapter-info h4 {
+            font-family: 'Sora', sans-serif;
+            font-size: 14.5px;
+            font-weight: 700;
+        }
+
+        .chapter-info p {
+            font-size: 12px;
+            color: var(--ink-faint);
+            margin-top: 3px;
+        }
+
+        .chapter-progress {
+            margin-top: 9px;
+            max-width: 320px;
+        }
+
+        .chapter-progress-track {
+            height: 5px;
+            border-radius: 99px;
+            background: #E8EDF7;
+            overflow: hidden;
+        }
+
+        .chapter-progress-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: #e53935;
+            transition: width .25s ease;
+        }
+
+        .chapter-progress-label {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--ink-faint);
+            margin-top: 5px;
+        }
+
+        .chapter-item.done .chapter-num {
+            background: var(--success-wash);
+            color: var(--success);
+        }
+
+        .playlist-item .p-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .playlist-item .p-meta {
+            font-size: 10.5px;
+            color: var(--ink-faint);
+        }
+
+        .playlist-item.completed .p-meta {
+            color: var(--success);
+        }
+
+        .subject-progress-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 13px;
+            background: var(--surface-alt);
+            border-radius: 11px;
+            font-size: 12px;
+            color: var(--ink-soft);
+        }
+
+        .subject-progress-summary strong {
+            color: var(--ink);
+        }
+
+        .chapter-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .chapter-actions .btn {
+            padding: 9px 14px;
+        }
+
+        .btn-watch {
+            background: linear-gradient(145deg, var(--blue-light), var(--blue-deep));
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(46, 92, 230, 0.3);
+        }
+
+        .btn-watch:hover {
+            transform: translateY(-2px);
+        }
+
+        /* ---- ASSIGNMENTS VIEW ---- */
+        .assignment-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-top: 22px;
+            flex-wrap: wrap;
+        }
+
+        .assignment-summary {
+            color: var(--ink-soft);
+            font-size: 13px;
+        }
+
+        .assignment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .assignment-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 17px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .assignment-card-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .assignment-icon {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--blue-wash);
+            color: var(--blue);
+            font-size: 16px;
+        }
+
+        .assignment-card h3 {
+            font: 700 15px 'Sora', sans-serif;
+            line-height: 1.4;
+        }
+
+        .assignment-card .assignment-desc {
+            color: var(--ink-soft);
+            font-size: 12.5px;
+            line-height: 1.6;
+            margin-top: 5px;
+        }
+
+        .deadline-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 11px;
+            background: var(--surface-alt);
+        }
+
+        .deadline-box i {
+            color: var(--blue);
+        }
+
+        .deadline-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .deadline-copy span {
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--ink-faint);
+            font-weight: 700;
+        }
+
+        .deadline-copy strong {
+            font-size: 12.5px;
+            color: var(--ink);
+        }
+
+        .deadline-box.overdue {
+            background: var(--danger-wash);
+        }
+
+        .deadline-box.overdue i,
+        .deadline-box.overdue strong {
+            color: var(--danger);
+        }
+
+        .deadline-box.upcoming i {
+            color: var(--success);
+        }
+
+        .assignment-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: auto;
+        }
+
+        .assignment-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .solution-note {
+            font-size: 11.5px;
+            color: var(--ink-faint);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .assignment-empty {
+            background: var(--surface);
+            border: 1px dashed rgba(46, 92, 230, .28);
+            border-radius: 18px;
+            padding: 34px 22px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .assignment-empty .empty-icon {
+            width: 58px;
+            height: 58px;
+            border-radius: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            color: var(--blue);
+            background: var(--blue-wash);
+            font-size: 22px;
+        }
+
+        .assignment-empty h3 {
+            font: 700 17px 'Sora', sans-serif;
+            margin-bottom: 7px;
+        }
+
+        .assignment-empty p {
+            max-width: 520px;
+            margin: 0 auto;
+            color: var(--ink-soft);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        /* ---- LAB MANUALS / PYQ VIEWS ---- */
+        .btn-ghost.wide {
+            grid-column: 1 / -1;
+        }
+
+        .btn.disabled {
+            opacity: .55;
+            pointer-events: none;
+        }
+
+        .doc-badge {
+            align-self: flex-start;
+            font: 700 10.5px 'JetBrains Mono', monospace;
+            letter-spacing: .5px;
+            padding: 4px 9px;
+            border-radius: 99px;
+            background: var(--blue-wash);
+            color: var(--blue);
+        }
+
+        .doc-badge.indigo {
+            background: var(--indigo-wash);
+            color: var(--indigo);
+        }
+
+        .doc-badge.cyan {
+            background: var(--cyan-wash);
+            color: var(--cyan);
+        }
+
+        .assignment-icon.indigo {
+            background: var(--indigo-wash);
+            color: var(--indigo);
+        }
+
+        .assignment-icon.cyan {
+            background: var(--cyan-wash);
+            color: var(--cyan);
+        }
+
+        .folder-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--blue);
+            text-decoration: none;
+        }
+
+        .folder-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ---- VIEW 3: Video Study Room ---- */
+        .study-room {
+            display: flex;
+            gap: 22px;
+            margin-top: 22px;
+            align-items: flex-start;
+        }
+
+        .video-panel {
+            flex: 0 0 70%;
+            min-width: 0;
+        }
+
+        .video-frame {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #0A1230;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .video-frame video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            cursor: pointer;
+        }
+
+        .video-frame:fullscreen {
+            border-radius: 0;
+            aspect-ratio: auto;
+        }
+
+        .video-frame.hide-cursor {
+            cursor: none;
+        }
+
+        .video-frame.hide-cursor video {
+            cursor: none;
+        }
+
+        .player-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .big-play {
+            width: 74px;
+            height: 74px;
+            border-radius: 50%;
+            border: 0;
+            background: rgba(255, 255, 255, .18);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #fff;
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, .25), 0 14px 34px rgba(0, 0, 0, .35);
+            transition: transform .25s var(--ease), background .25s var(--ease), opacity .25s var(--ease);
+        }
+
+        .big-play i {
+            margin-left: 4px;
+        }
+
+        .big-play:hover {
+            transform: scale(1.07);
+            background: rgba(46, 92, 230, .75);
+        }
+
+        .video-frame.is-playing .big-play {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(.85);
+        }
+
+        .video-frame.is-loading .big-play {
+            display: none;
+        }
+
+        .player-spinner {
+            display: none;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, .25);
+            border-top-color: #fff;
+            animation: spin .8s linear infinite;
+        }
+
+        .video-frame.is-loading .player-spinner {
+            display: block;
+        }
+
+        .player-error {
+            display: none;
+            position: absolute;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+            padding: 24px;
+            color: #fff;
+            background: rgba(10, 18, 48, .92);
+            font-size: 13.5px;
+            line-height: 1.6;
+        }
+
+        .player-error i {
+            font-size: 28px;
+            color: var(--amber-light);
+        }
+
+        .video-frame.has-error .player-error {
+            display: flex;
+        }
+
+        .video-frame.has-error .player-controls,
+        .video-frame.has-error .player-center {
+            display: none;
+        }
+
+        .player-error {
+            z-index: 3;
+        }
+
+        .player-controls {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 38px 16px 12px;
+            background: linear-gradient(to top, rgba(6, 12, 32, .88), rgba(6, 12, 32, 0));
+            color: #fff;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity .25s var(--ease), transform .25s var(--ease);
+        }
+
+        .video-frame.show-controls .player-controls,
+        .video-frame:not(.is-playing) .player-controls {
+            opacity: 1;
+            transform: none;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .ctrl-btn {
+            border: 0;
+            background: transparent;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background .2s var(--ease);
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(255, 255, 255, .16);
+        }
+
+        .ctrl-btn .skip-num {
+            font: 700 9px 'Inter', sans-serif;
+            margin-top: 1px;
+        }
+
+        .ctrl-btn.skip {
+            flex-direction: column;
+            gap: 0;
+            font-size: 13px;
+        }
+
+        .player-time {
+            font: 500 12px 'JetBrains Mono', monospace;
+            color: #E5ECFF;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
+        .ctrl-spacer {
+            flex: 1;
+        }
+
+        .player-controls input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+            height: 18px;
+            margin: 0;
+            --pct: 0%;
+        }
+
+        .player-controls input[type=range]::-webkit-slider-runnable-track {
+            height: 5px;
+            border-radius: 99px;
+            background: linear-gradient(to right, #FF4D55 var(--pct), rgba(255, 255, 255, .28) var(--pct));
+        }
+
+        .player-controls input[type=range]::-moz-range-track {
+            height: 5px;
+            border-radius: 99px;
+            background: rgba(255, 255, 255, .28);
+        }
+
+        .player-controls input[type=range]::-moz-range-progress {
+            height: 5px;
+            border-radius: 99px;
+            background: #FF4D55;
+        }
+
+        .player-controls input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            margin-top: -4.5px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+            transition: transform .15s var(--ease);
+        }
+
+        .player-controls input[type=range]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border: 0;
+            border-radius: 50%;
+            background: #fff;
+        }
+
+        .player-controls input[type=range]:hover::-webkit-slider-thumb {
+            transform: scale(1.25);
+        }
+
+        #volBar {
+            width: 74px;
+        }
+
+        .speed-select {
+            background: rgba(255, 255, 255, .14);
+            color: #fff;
+            border: 0;
+            border-radius: 9px;
+            padding: 7px 8px;
+            font: 600 12px 'Inter', sans-serif;
+            cursor: pointer;
+        }
+
+        .speed-select option {
+            color: #0F1B33;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 640px) {
+
+            #volBar,
+            .ctrl-btn.skip {
+                display: none;
+            }
+
+            .player-time {
+                font-size: 11px;
+            }
+        }
+
+        .now-playing {
+            margin-top: 16px;
+        }
+
+        .now-playing h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .now-playing p {
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            margin-top: 4px;
+        }
+
+        .study-resources-panel {
+            flex: 0 0 30%;
+            min-width: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .study-resources-panel h4 {
+            font-family: 'Sora', sans-serif;
+            font-size: 13.5px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .resource-current {
+            font-size: 11px;
+            color: var(--ink-faint);
+            background: var(--surface-alt);
+            padding: 8px 10px;
+            border-radius: 9px;
+            margin-bottom: 10px;
+        }
+
+        .resource-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 9px;
+            color: var(--ink);
+            text-decoration: none;
+            transition: transform .2s var(--ease), border-color .2s var(--ease), background .2s var(--ease);
+        }
+
+        .resource-card:hover {
+            transform: translateY(-1px);
+            border-color: var(--blue);
+            background: var(--blue-wash);
+        }
+
+        .resource-icon {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .notes-icon {
+            color: var(--blue);
+            background: var(--blue-wash);
+        }
+
+        .practice-icon {
+            color: #a66a05;
+            background: rgba(240, 180, 41, .14);
+        }
+
+        .resource-copy {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+        }
+
+        .resource-copy strong {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .resource-copy small {
+            font-size: 10.5px;
+            color: var(--ink-faint);
+        }
+
+        .resource-arrow {
+            color: var(--ink-faint);
+            font-size: 10px;
+        }
+
+        .resource-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-soft);
+            margin: 18px 0 9px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .resource-pyq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .resource-pyq-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 11px;
+            border-radius: 10px;
+            background: var(--surface-alt);
+            color: var(--ink);
+            text-decoration: none;
+            font-size: 11.5px;
+            transition: background .2s var(--ease), color .2s var(--ease);
+        }
+
+        .resource-pyq-link:hover {
+            background: var(--indigo-wash);
+            color: var(--indigo);
+        }
+
+        .resource-empty {
+            font-size: 11px;
+            color: var(--ink-faint);
+            padding: 10px;
+            background: var(--surface-alt);
+            border-radius: 10px;
+        }
+
+        .resource-footnote {
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            margin-top: 14px;
+            line-height: 1.5;
+        }
+
+        .resource-footnote i {
+            margin-right: 4px;
+        }
+
+        /* ============ KEYFRAMES ============ */
+        @keyframes cardIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes dotPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(29, 163, 95, 0.45);
+            }
+
+            70% {
+                box-shadow: 0 0 0 9px rgba(29, 163, 95, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(29, 163, 95, 0);
+            }
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(-40px, 30px) scale(1.08);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+
+            .view.active,
+            .subject-card {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 1080px) {
+            .study-room {
+                flex-direction: column;
+            }
+
+            .video-panel,
+            .study-resources-panel {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+        }
+
+        .mobile-nav {
+            display: none;
+        }
+
+        @media (max-width: 1080px) {
+
+            .video-panel,
+            .study-resources-panel {
+                flex: 0 0 auto;
+            }
+        }
+
+        @media (max-width: 780px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px 16px calc(94px + env(safe-area-inset-bottom));
+            }
+
+            .mesh span {
+                filter: blur(60px);
+            }
+
+            .mesh span:nth-child(3) {
+                display: none;
+            }
+
+            .mobile-nav {
+                display: flex;
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                bottom: calc(10px + env(safe-area-inset-bottom));
+                z-index: 30;
+                padding: 7px;
+                gap: 4px;
+                border-radius: 22px;
+                background: linear-gradient(180deg, #101E4C, #0A1230);
+                box-shadow: 0 14px 34px rgba(10, 18, 48, .38), 0 0 0 1px rgba(255, 255, 255, .08);
+            }
+
+            .mobile-nav a {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 9px 2px 7px;
+                border-radius: 16px;
+                text-decoration: none;
+                color: rgba(255, 255, 255, .55);
+                font: 600 10px 'Inter', sans-serif;
+                transition: background .25s var(--ease), color .25s var(--ease);
+            }
+
+            .mobile-nav a i {
+                font-size: 17px;
+            }
+
+            .mobile-nav a span {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+
+            .mobile-nav a.active {
+                color: #fff;
+                background: linear-gradient(120deg, var(--blue-light), var(--blue));
+                box-shadow: 0 8px 18px rgba(46, 92, 230, .4);
+            }
+
+            .page-header {
+                margin-bottom: 18px;
+            }
+
+            .page-header h1 {
+                font-size: 22px;
+                line-height: 1.25;
+            }
+
+            .eyebrow {
+                font-size: 10.5px;
+                margin-bottom: 6px;
+            }
+
+            .back-btn {
+                padding: 9px 15px 9px 12px;
+                font-size: 13px;
+            }
+
+            .subject-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .subject-card {
+                padding: 18px;
+                border-radius: 18px;
+                gap: 14px;
+            }
+
+            .subject-card:hover {
+                transform: none;
+            }
+
+            .btn {
+                min-height: 44px;
+            }
+
+            .continue-card.visible {
+                padding: 18px;
+            }
+
+            .chapter-list {
+                margin-top: 16px;
+                gap: 10px;
+            }
+
+            .chapter-item {
+                flex-wrap: wrap;
+                padding: 14px;
+                gap: 12px 14px;
+            }
+
+            .chapter-item:hover {
+                transform: none;
+            }
+
+            .chapter-info {
+                flex: 1 1 0;
+            }
+
+            .chapter-progress {
+                max-width: none;
+            }
+
+            .chapter-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .chapter-actions .btn-watch {
+                grid-column: 1 / -1;
+            }
+
+            .chapter-actions .btn {
+                padding: 11px 10px;
+            }
+
+            .assignment-toolbar {
+                margin-top: 16px;
+            }
+
+            .assignment-grid {
+                gap: 12px;
+            }
+
+            .assignment-card {
+                padding: 16px;
+            }
+
+            .assignment-actions .btn {
+                min-width: 0;
+            }
+
+            .study-room {
+                gap: 16px;
+                margin-top: 16px;
+            }
+
+            .video-frame {
+                border-radius: 14px;
+            }
+
+            .now-playing {
+                margin-top: 12px;
+            }
+
+            .now-playing h3 {
+                font-size: 16px;
+                line-height: 1.35;
+            }
+
+            .study-resources-panel {
+                padding: 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .player-controls {
+                padding: 30px 10px 8px;
+            }
+
+            .ctrl-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .controls-row {
+                gap: 2px;
+            }
+
+            .player-time {
+                font-size: 11px;
+                margin-left: 2px;
+            }
+
+            .player-controls input[type=range] {
+                height: 24px;
+            }
+
+            .player-controls input[type=range]::-webkit-slider-thumb {
+                width: 16px;
+                height: 16px;
+                margin-top: -5.5px;
+            }
+
+            .player-controls input[type=range]::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+            }
+
+            .speed-select {
+                font-size: 16px;
+                padding: 5px 4px;
+                border-radius: 8px;
+            }
+
+            /* 16px stops iOS zooming when tapped */
+            .big-play {
+                width: 60px;
+                height: 60px;
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .main-content {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            .mobile-nav a span {
+                font-size: 9px;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+        }
+
+        .document-viewer { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(8, 15, 30, .78); backdrop-filter: blur(5px); }
+        .document-viewer.open { display: flex; }
+        .document-viewer-panel { display: flex; flex-direction: column; width: min(1100px, 100%); height: min(90vh, 900px); overflow: hidden; border-radius: 16px; background: var(--surface, #fff); box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+        .document-viewer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--line, #e5e7eb); }
+        .document-viewer-toolbar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .document-viewer-toolbar > div { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        #documentViewerFrame { width: 100%; height: 100%; border: 0; background: #f3f4f6; }
+        @media (max-width: 600px) { .document-viewer { padding: 0; } .document-viewer-panel { width: 100%; height: 100%; border-radius: 0; } .document-viewer-toolbar { padding: 8px 10px; } }
+    </style>
 </head>
+
 <body>
 
-<div class="mesh"><span></span><span></span><span></span></div>
+    <div class="mesh"><span></span><span></span><span></span></div>
 
-<!-- SIDEBAR -->
-<nav class="sidebar">
-    <div class="logo">
-        <div class="logo-mark">MG</div>
-        <div class="logo-text">MGMCOET<span>Student Portal</span></div>
-    </div>
-
-    <div class="nav-section-label">Menu</div>
-    <ul class="nav-links">
-        <li><a href="#"><i class="fas fa-grip"></i> Dashboard</a></li>
-        <li><a href="#"><i class="fas fa-user"></i> My Profile</a></li>
-        <li><a href="#"><i class="fas fa-bullhorn"></i> All Notices</a></li>
-        <li><a href="#" class="active"><i class="fas fa-book"></i> Academics</a></li>
-        <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
-    </ul>
-
-    <div class="profile-mini">
-        <div class="avatar">P</div>
-        <div class="info"><strong>Priyansh Kumar</strong><span>2200156</span></div>
-        <i class="fas fa-ellipsis-vertical"></i>
-    </div>
-</nav>
-
-<!-- MAIN CONTENT -->
-<main class="main-content">
-
-    <div class="page-header" id="pageHeader">
-        <div>
-            <div class="eyebrow"><span class="dot"></span> ACADEMIC RESOURCES</div>
-            <h1 id="pageTitle">Academics</h1>
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="logo">
+            <div class="logo-mark">MG</div>
+            <div class="logo-text">MGMCOET<span>Student Portal</span></div>
         </div>
-    </div>
 
-    <!-- VIEW 1: SUBJECT GRID -->
-    <section class="view active" id="viewSubjects">
-        <div class="subject-grid" id="subjectGrid"></div>
-    </section>
+        <div class="nav-section-label">Menu</div>
+        <ul class="nav-links">
+            <li><a href="#"><i class="fas fa-grip"></i> Dashboard</a></li>
+            <li><a href="#"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="#"><i class="fas fa-bullhorn"></i> All Notices</a></li>
+            <li><a href="#" class="active"><i class="fas fa-book"></i> Academics</a></li>
+            <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+        </ul>
 
-    <!-- VIEW 2: CHAPTER LIST -->
-    <section class="view" id="viewChapters">
-        <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to Subjects</button>
-        <div class="chapter-list" id="chapterList"></div>
-    </section>
+        <div class="profile-mini">
+            <div class="avatar">P</div>
+            <div class="info"><strong>Priyansh Kumar</strong><span>2200156</span></div>
+            <i class="fas fa-ellipsis-vertical"></i>
+        </div>
+    </nav>
 
-    <!-- VIEW 3: VIDEO STUDY ROOM -->
-    <section class="view" id="viewPlayer">
-        <button class="back-btn" onclick="backToChapters()"><i class="fas fa-arrow-left"></i> Back to Chapters</button>
-        <div class="study-room">
-            <div class="video-panel">
-                <div class="video-frame"><div id="ytPlayer"></div></div>
-                <div class="now-playing">
-                    <h3 id="npTitle">—</h3>
-                    <p id="npSubject">—</p>
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-nav" aria-label="Primary">
+        <a href="#"><i class="fas fa-grip"></i><span>Home</span></a>
+        <a href="#"><i class="fas fa-user"></i><span>Profile</span></a>
+        <a href="#"><i class="fas fa-bullhorn"></i><span>Notices</span></a>
+        <a href="#" class="active"><i class="fas fa-book"></i><span>Academics</span></a>
+        <a href="#"><i class="fas fa-cog"></i><span>Settings</span></a>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <div class="page-header" id="pageHeader">
+            <div>
+                <div class="eyebrow"><span class="dot"></span> ACADEMIC RESOURCES</div>
+                <h1 id="pageTitle">Academics</h1>
+                <p id="profileScope" style="margin-top:6px;color:var(--ink-soft);font-size:13px">Loading your class resources…</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="back-btn" type="button" onclick="openAssignments()"><i class="fas fa-list-check"></i> Assignments</button>
+                <button class="back-btn" type="button" onclick="openNotices()"><i class="fas fa-bullhorn"></i> Notices</button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: SUBJECT GRID -->
+        <section class="view active" id="viewSubjects">
+            <div class="continue-card" id="continueCard" aria-live="polite">
+                <div class="continue-copy">
+                    <div class="continue-kicker"><i class="fas fa-book-open"></i> Pick up where you left off</div>
+                    <h2 id="continueTitle">Continue learning</h2>
+                    <p id="continueMeta">Your last lecture and progress will appear here.</p>
+                    <div class="continue-progress">
+                        <div class="continue-progress-track">
+                            <div class="continue-progress-fill" id="continueProgressFill" style="width:0%"></div>
+                        </div>
+                        <div class="continue-progress-label"><span id="continueProgressTime">Not started
+                                yet</span><strong id="continuePercent">0%</strong></div>
+                    </div>
                 </div>
+                <button class="btn-continue" id="continueButton" onclick="continueLastStudy()"><i
+                        class="fas fa-play"></i> Continue lecture</button>
             </div>
-            <div class="playlist-panel">
-                <h4>Playlist <i class="fas fa-list-ul" style="color:var(--ink-faint);font-size:12px;"></i></h4>
-                <div id="playlistItems"></div>
+            <div class="subject-grid" id="subjectGrid"></div>
+        </section>
+
+        <!-- VIEW 2: CHAPTER LIST -->
+        <section class="view" id="viewChapters">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to
+                Subjects</button>
+            <div class="chapter-list" id="chapterList"></div>
+        </section>
+
+        <section class="view" id="viewNotes">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to Subjects</button>
+            <div class="assignment-toolbar"><div class="assignment-summary" id="notesSummary">Notes for this subject</div></div>
+            <div class="assignment-grid" id="subjectNotesGrid"></div>
+            <div class="assignment-empty" id="subjectNotesEmpty" style="display:none"><div class="empty-icon"><i class="fas fa-file-lines"></i></div><h3>No notes uploaded yet</h3><p>Chapter notes added by your academic staff will appear here.</p></div>
+        </section>
+
+        <!-- ASSIGNMENTS VIEW -->
+        <section class="view" id="viewAssignments">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to
+                Subjects</button>
+            <div class="assignment-toolbar">
+                <div class="assignment-summary" id="assignmentSummary">Assignments, deadlines and optional solutions
+                </div>
+                <span class="eyebrow" style="margin:0"><i class="fas fa-calendar-check"></i> DEADLINES TRACKED
+                    HERE</span>
             </div>
-        </div>
-    </section>
+            <div class="assignment-grid" id="assignmentGrid"></div>
+            <div class="assignment-empty" id="assignmentEmpty" style="display:none">
+                <div class="empty-icon"><i class="fas fa-file-circle-check"></i></div>
+                <h3>No assignments added yet</h3>
+                <p>Assignments for this subject will appear here with their deadline. A solution can be attached when
+                    available; if no solution is provided, the assignment will still be shown normally.</p>
+            </div>
+        </section>
 
-</main>
+        <!-- LAB MANUALS VIEW -->
+        <section class="view" id="viewLab">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to
+                Subjects</button>
+            <div class="assignment-toolbar">
+                <div class="assignment-summary" id="labSummary">Lab manuals and experiments</div>
+                <a class="folder-link" id="labFolderLink" href="#" target="_blank" rel="noopener"
+                    style="display:none"><i class="fas fa-folder-open"></i> Open full lab folder</a>
+            </div>
+            <div class="assignment-grid" id="labGrid"></div>
+            <div class="assignment-empty" id="labEmpty" style="display:none">
+                <div class="empty-icon"><i class="fas fa-flask"></i></div>
+                <h3>No lab manuals added yet</h3>
+                <p>Lab manuals and experiment files for this subject will appear here once they are uploaded.</p>
+            </div>
+        </section>
 
-<script>
-/* ============ DATA ============ */
-const SUBJECTS = {
-    dbms: {
-        name: "Database Management Systems", code: "DBMS · CS301", icon: "fa-database", cls: "icon-indigo",
-        assignments: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_ASSIGNMENTS",
-        labManuals: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_LAB",
-        pyqs: [
-            { label: "2024 End Semester", url: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_PYQ_2024" },
-            { label: "2023 End Semester", url: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_PYQ_2023" }
-        ],
-        chapters: [
-            { title: "Introduction to DBMS", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C1_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C1_PRACTICE" },
-            { title: "ER Model & Relational Model", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C2_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C2_PRACTICE" },
-            { title: "Normalization (1NF–BCNF)", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C3_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_DBMS_C3_PRACTICE" }
-        ]
-    },
-    os: {
-        name: "Operating Systems", code: "OS · CS302", icon: "fa-microchip", cls: "icon-blue",
-        assignments: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_ASSIGNMENTS",
-        labManuals: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_LAB",
-        pyqs: [
-            { label: "2024 End Semester", url: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_PYQ_2024" },
-            { label: "2023 End Semester", url: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_PYQ_2023" }
-        ],
-        chapters: [
-            { title: "Process Management", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C1_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C1_PRACTICE" },
-            { title: "CPU Scheduling Algorithms", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C2_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C2_PRACTICE" },
-            { title: "Deadlocks & Memory Management", videoId: "M7lc1UVf-VE", notes: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C3_NOTES", practice: "https://drive.google.com/drive/folders/PLACEHOLDER_OS_C3_PRACTICE" }
-        ]
-    }
-};
+        <!-- PYQ VIEW -->
+        <section class="view" id="viewPyqs">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to
+                Subjects</button>
+            <div class="assignment-toolbar">
+                <div class="assignment-summary" id="pyqSummary">Previous year question papers</div>
+                <span class="eyebrow" style="margin:0"><i class="fas fa-clock-rotate-left"></i> PREVIOUS YEAR
+                    QUESTIONS</span>
+            </div>
+            <div class="assignment-grid" id="pyqGrid"></div>
+            <div class="assignment-empty" id="pyqEmpty" style="display:none">
+                <div class="empty-icon"><i class="fas fa-file-circle-question"></i></div>
+                <h3>No question papers added yet</h3>
+                <p>Previous year question papers for this subject will appear here once they are uploaded.</p>
+            </div>
+        </section>
 
-const STORAGE_KEY = "academics_completed_v1";
-let completed = {}; // { "dbms:0": true, ... }
-try { completed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-catch (e) { console.warn("localStorage unavailable, progress won't persist:", e); }
+        <!-- NOTICES VIEW -->
+        <section class="view" id="viewNotices">
+            <button class="back-btn" onclick="showView('viewSubjects')"><i class="fas fa-arrow-left"></i> Back to Subjects</button>
+            <div class="assignment-toolbar"><div class="assignment-summary" id="noticeSummary">Notices for your class</div></div>
+            <div class="assignment-grid" id="noticeGrid"></div>
+            <div class="assignment-empty" id="noticeEmpty" style="display:none"><div class="empty-icon"><i class="fas fa-bullhorn"></i></div><h3>No notices yet</h3><p>Notices for your branch and year will appear here.</p></div>
+        </section>
 
-function saveCompleted() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(completed)); }
-    catch (e) { /* progress just won't persist across reloads */ }
-}
+        <!-- VIEW 3: VIDEO STUDY ROOM -->
+        <section class="view" id="viewPlayer">
+            <button class="back-btn" onclick="backToChapters()"><i class="fas fa-arrow-left"></i> Back to
+                Chapters</button>
+            <div class="study-room">
+                <div class="video-panel">
+                    <div class="video-frame show-controls" id="videoFrame">
+                        <video id="mediaPlayer" playsinline preload="metadata"></video>
+                        <div class="player-center">
+                            <div class="player-spinner"></div>
+                            <button class="big-play" id="bigPlay" aria-label="Play"><i class="fas fa-play"></i></button>
+                        </div>
+                        <div class="player-error"><i class="fas fa-triangle-exclamation"></i>
+                            <div>This lecture could not be loaded.<br>Please check the video link or try again later.
+                            </div>
+                        </div>
+                        <div class="player-controls" id="playerControls">
+                            <input type="range" id="seekBar" min="0" max="1000" value="0" step="1" aria-label="Seek">
+                            <div class="controls-row">
+                                <button class="ctrl-btn" id="btnPlay" aria-label="Play / Pause"><i
+                                        class="fas fa-play"></i></button>
+                                <button class="ctrl-btn skip" id="btnBack" aria-label="Back 10 seconds"><i
+                                        class="fas fa-rotate-left"></i><span class="skip-num">10</span></button>
+                                <button class="ctrl-btn skip" id="btnFwd" aria-label="Forward 10 seconds"><i
+                                        class="fas fa-rotate-right"></i><span class="skip-num">10</span></button>
+                                <button class="ctrl-btn" id="btnMute" aria-label="Mute"><i
+                                        class="fas fa-volume-high"></i></button>
+                                <input type="range" id="volBar" min="0" max="1" step="0.05" value="1"
+                                    aria-label="Volume">
+                                <span class="player-time" id="timeLabel">0:00 / 0:00</span>
+                                <span class="ctrl-spacer"></span>
+                                <select class="speed-select" id="speedSel" aria-label="Playback speed">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="0.75">0.75x</option>
+                                    <option value="1" selected>1x</option>
+                                    <option value="1.25">1.25x</option>
+                                    <option value="1.5">1.5x</option>
+                                    <option value="1.75">1.75x</option>
+                                    <option value="2">2x</option>
+                                </select>
+                                <button class="ctrl-btn" id="btnFs" aria-label="Fullscreen"><i
+                                        class="fas fa-expand"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="now-playing">
+                        <h3 id="npTitle">—</h3>
+                        <p id="npSubject">—</p>
+                    </div>
+                </div>
+                <aside class="study-resources-panel">
+                    <h4>Study Resources <i class="fas fa-book-open" style="color:var(--ink-faint);font-size:12px;"></i>
+                    </h4>
+                    <div class="resource-current" id="resourceChapterTitle">Chapter resources</div>
+                    <a class="resource-card" id="resourceNotes" href="#" target="_blank" rel="noopener">
+                        <span class="resource-icon notes-icon"><i class="fas fa-file-lines"></i></span>
+                        <span class="resource-copy"><strong>Notes</strong><small>Open chapter notes</small></span>
+                        <i class="fas fa-arrow-up-right-from-square resource-arrow"></i>
+                    </a>
+                    <a class="resource-card" id="resourcePractice" href="#" target="_blank" rel="noopener">
+                        <span class="resource-icon practice-icon"><i class="fas fa-pen-to-square"></i></span>
+                        <span class="resource-copy"><strong>Practice Questions</strong><small>Test your
+                                understanding</small></span>
+                        <i class="fas fa-arrow-up-right-from-square resource-arrow"></i>
+                    </a>
+                    <div class="resource-section-title">Previous Year Questions (PYQs)</div>
+                    <div id="resourcePyqs" class="resource-pyq-list"></div>
+                    <p class="resource-footnote"><i class="fas fa-circle-info"></i> Resources open here in the portal.</p>
+                </aside>
+            </div>
+        </section>
 
-let activeSubjectKey = null;
-let activeChapterIndex = null;
-let ytPlayer = null;
-let ytReady = false;
+    </main>
 
-/* ============ VIEW SWITCHING ============ */
-function showView(id) {
-    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
+    <div id="documentViewer" class="document-viewer" aria-hidden="true">
+        <section class="document-viewer-panel" role="dialog" aria-modal="true" aria-labelledby="documentViewerTitle">
+            <header class="document-viewer-toolbar">
+                <strong id="documentViewerTitle">Document</strong>
+                <div><a id="documentViewerOpen" class="btn btn-ghost" target="_blank" rel="noopener">Open / Download</a>
+                    <button id="documentViewerClose" class="btn btn-ghost" type="button" aria-label="Close viewer"><i class="fas fa-xmark"></i></button></div>
+            </header>
+            <iframe id="documentViewerFrame" title="Document preview" allow="fullscreen" referrerpolicy="no-referrer"></iframe>
+        </section>
+    </div>
 
-/* ============ VIEW 1: RENDER SUBJECT GRID ============ */
-function renderSubjects() {
-    const grid = document.getElementById("subjectGrid");
-    grid.innerHTML = Object.entries(SUBJECTS).map(([key, s]) => `
+    <script type="module">
+        import { requireAuth, supabase } from './auth.js';
+        const authSession = await requireAuth();
+        if (!authSession) throw new Error('Sign in required.');
+        const academicUserId = authSession.user.id;
+        /* ============ DATA ============ */
+        // Supabase supplies the class-specific subject and chapter records.
+        const SUBJECTS = {};
+        let academicAssignments = [];
+        let academicNotices = [];
+        let academicPyqs = [];
+
+        const STORAGE_KEY = "academics_completed_v1:" + academicUserId;
+        const PROGRESS_KEY = "academics_video_progress_v1:" + academicUserId;
+        const LAST_STUDY_KEY = "academics_last_study_v1:" + academicUserId;
+        let completed = {}; // { "dbms:0": true, ... }
+        let videoProgress = {}; // { "dbms:0": { seconds: 120, duration: 900, updatedAt: ... } }
+        let lastStudy = null;
+        try {
+            completed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            videoProgress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}");
+            lastStudy = JSON.parse(localStorage.getItem(LAST_STUDY_KEY) || "null");
+        } catch (e) { console.warn("Saved study progress could not be loaded:", e); }
+
+        function saveCompleted() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(completed)); }
+            catch (e) { console.warn("Could not save completed lectures:", e); }
+        }
+        function saveVideoProgress() {
+            try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(videoProgress)); }
+            catch (e) { console.warn("Could not save video position:", e); }
+        }
+        function progressKey(key, index) { return key + ':' + index; }
+        function formatTime(totalSeconds) {
+            const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+            const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), sec = seconds % 60;
+            return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+        }
+        function lectureStatus(key, index) {
+            const id = progressKey(key, index), p = videoProgress[id];
+            if (completed[id]) return { label: 'Completed', percent: 100 };
+            if (p && p.seconds > 0) {
+                const percent = p.duration > 0 ? Math.min(99, Math.floor((p.seconds / p.duration) * 100)) : 0;
+                return { label: `Watched up to ${formatTime(p.seconds)}${p.duration ? ' / ' + formatTime(p.duration) : ''}`, percent };
+            }
+            return { label: 'Not started', percent: 0 };
+        }
+        function persistLastStudy(key, index) {
+            if (!SUBJECTS[key] || !SUBJECTS[key].chapters[index]) return;
+            lastStudy = { subjectKey: key, chapterIndex: index, updatedAt: Date.now() };
+            try { localStorage.setItem(LAST_STUDY_KEY, JSON.stringify(lastStudy)); } catch (e) { /* local storage may be unavailable */ }
+        }
+        function resolveLastStudy() {
+            if (lastStudy && SUBJECTS[lastStudy.subjectKey] && SUBJECTS[lastStudy.subjectKey].chapters[lastStudy.chapterIndex]) return lastStudy;
+            // Backward-compatible fallback: find the lecture with the most recently saved progress.
+            let newest = null;
+            Object.entries(videoProgress).forEach(([id, p]) => {
+                if (!p || !Number.isFinite(Number(p.updatedAt))) return;
+                const parts = id.split(':');
+                const index = Number(parts[1]);
+                if (SUBJECTS[parts[0]] && SUBJECTS[parts[0]].chapters[index] && (!newest || p.updatedAt > newest.updatedAt)) {
+                    newest = { subjectKey: parts[0], chapterIndex: index, updatedAt: p.updatedAt };
+                }
+            });
+            if (newest) { lastStudy = newest; try { localStorage.setItem(LAST_STUDY_KEY, JSON.stringify(lastStudy)); } catch (e) { } }
+            return newest;
+        }
+        function renderContinueLearning() {
+            const card = document.getElementById('continueCard');
+            const last = resolveLastStudy();
+            if (!card || !last) { if (card) card.classList.remove('visible'); return; }
+            const subject = SUBJECTS[last.subjectKey];
+            const chapter = subject.chapters[last.chapterIndex];
+            const id = progressKey(last.subjectKey, last.chapterIndex);
+            const progress = videoProgress[id] || {};
+            const status = lectureStatus(last.subjectKey, last.chapterIndex);
+            document.getElementById('continueTitle').textContent = chapter.title;
+            document.getElementById('continueMeta').textContent = subject.name + ' · ' + subject.code + (completed[id] ? ' · Completed lecture' : ' · Last studied lecture');
+            document.getElementById('continueProgressFill').style.width = status.percent + '%';
+            document.getElementById('continuePercent').textContent = status.percent + '%';
+            document.getElementById('continueProgressTime').textContent = completed[id] ? 'Fully watched' : (progress.seconds > 0 ? 'Watched up to ' + formatTime(progress.seconds) + (progress.duration ? ' / ' + formatTime(progress.duration) : '') : 'Not started yet');
+            document.getElementById('continueButton').innerHTML = completed[id] ? '<i class="fas fa-rotate-right"></i> Review lecture' : '<i class="fas fa-play"></i> Continue lecture';
+            card.classList.add('visible');
+        }
+        function continueLastStudy() {
+            const last = resolveLastStudy();
+            if (last) openPlayer(last.subjectKey, Number(last.chapterIndex));
+        }
+
+        let activeSubjectKey = null;
+        let activeChapterIndex = null;
+
+        /* ============ VIEW SWITCHING ============ */
+        function showView(id) {
+            if (id !== "viewPlayer") { saveCurrentPlayback(); media.pause(); }
+            if (id === "viewSubjects") { renderSubjects(); document.getElementById("pageTitle").textContent = "Academics"; }
+            document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+            document.getElementById(id).classList.add("active");
+        }
+
+        /* ============ VIEW 1: RENDER SUBJECT GRID ============ */
+        function renderSubjects() {
+            renderContinueLearning();
+            const grid = document.getElementById("subjectGrid");
+            if (!Object.keys(SUBJECTS).length) {
+                grid.innerHTML = '<div class="assignment-empty" style="display:block"><h3>No subjects for your class yet</h3><p>Academic resources will appear here when staff publishes content for your branch and year.</p></div>';
+                return;
+            }
+            grid.innerHTML = Object.entries(SUBJECTS).map(([key, s]) => `
         <div class="subject-card">
             <div class="subject-head">
                 <div class="subject-icon ${s.cls}"><i class="fas ${s.icon}"></i></div>
-                <div><h3>${s.name}</h3><p>${s.code}</p></div>
+                <div><h3>${escapeAssignmentText(s.name)}</h3><p>${escapeAssignmentText(s.code)}</p></div>
+            </div>
+            <div class="subject-progress-summary">
+                <span><strong>${s.chapters.filter((c, i) => completed[key + ':' + i]).length}/${s.chapters.length}</strong> lectures completed</span>
+                <span>${s.chapters.filter((c, i) => videoProgress[key + ':' + i] && !completed[key + ':' + i]).length} in progress</span>
             </div>
             <div class="subject-actions">
-                <a class="btn btn-ghost" href="${s.assignments}" target="_blank" rel="noopener"><i class="fas fa-file-upload"></i> Assignments</a>
-                <a class="btn btn-ghost" href="${s.labManuals}" target="_blank" rel="noopener"><i class="fas fa-flask"></i> Lab Manuals</a>
-                <button class="btn btn-primary" onclick="openChapters('${key}')"><i class="fas fa-layer-group"></i> View Chapters</button>
+                <button class="btn btn-ghost" onclick="openAssignments('${escapeAssignmentAttr(key)}')"><i class="fas fa-file-upload"></i> Assignments</button>
+                <button class="btn btn-ghost" onclick="openSubjectNotes('${escapeAssignmentAttr(key)}')"><i class="fas fa-file-lines"></i> Notes (${s.chapters.filter(c => isRealUrl(c.notes)).length})</button>
+                <button class="btn btn-ghost" onclick="openLabManuals('${escapeAssignmentAttr(key)}')"><i class="fas fa-flask"></i> Lab Manuals</button>
+                <button class="btn btn-ghost wide" onclick="openPyqs('${escapeAssignmentAttr(key)}')"><i class="fas fa-clock-rotate-left"></i> Previous Year Questions (${(s.pyqs || []).length})</button>
+                <button class="btn btn-primary" onclick="openChapters('${escapeAssignmentAttr(key)}')"><i class="fas fa-layer-group"></i> View Chapters</button>
             </div>
-            <details class="pyq-toggle">
-                <summary>PYQs <i class="fas fa-chevron-down"></i></summary>
-                <div class="pyq-links">
-                    ${s.pyqs.map(p => `<a href="${p.url}" target="_blank" rel="noopener">${p.label} <i class="fas fa-arrow-up-right-from-square"></i></a>`).join("")}
-                </div>
-            </details>
         </div>
     `).join("");
-}
+        }
 
-/* ============ VIEW 2: RENDER CHAPTER LIST ============ */
-function openChapters(key) {
-    activeSubjectKey = key;
-    const s = SUBJECTS[key];
-    document.getElementById("pageTitle").textContent = s.name;
-    const list = document.getElementById("chapterList");
-    list.innerHTML = s.chapters.map((c, i) => `
+        /* ============ ASSIGNMENTS VIEW ============ */
+        function openAssignments(key) {
+            const subject = SUBJECTS[key];
+            if (key && !subject) return;
+            activeSubjectKey = key || null;
+            document.getElementById("pageTitle").textContent = (subject ? subject.name + " · " : "Your Class · ") + "Assignments";
+            const grid = document.getElementById("assignmentGrid");
+            const empty = document.getElementById("assignmentEmpty");
+            const items = key ? (subject.assignmentItems || []) : academicAssignments;
+            document.getElementById("assignmentSummary").textContent = `${subject ? subject.name : 'All subjects'} · ${items.length} assignment${items.length === 1 ? '' : 's'} listed`;
+            grid.innerHTML = items.map((item, index) => {
+                const title = item.title || `Assignment ${index + 1}`;
+                const description = item.description || "No additional instructions provided.";
+                const due = item.deadline ? new Date(item.deadline + (item.deadline.length === 10 ? "T23:59:59" : "")) : null;
+                const validDue = due && !Number.isNaN(due.getTime());
+                const overdue = validDue && due.getTime() < Date.now();
+                const deadlineText = validDue ? due.toLocaleString(undefined, item.deadline.length === 10 ? { year: 'numeric', month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : "Deadline not announced";
+                const assignmentUrl = item.assignmentUrl && !item.assignmentUrl.includes("PLACEHOLDER") ? item.assignmentUrl : "";
+                const solutionUrl = item.solutionUrl && !item.solutionUrl.includes("PLACEHOLDER") ? item.solutionUrl : "";
+                return `<article class="assignment-card">
+            <div class="assignment-card-top"><div class="assignment-icon"><i class="fas fa-file-alt"></i></div><div><h3>${escapeAssignmentText(title)}</h3><p class="assignment-desc">${escapeAssignmentText(description)}</p></div></div>
+            <div class="deadline-box ${overdue ? 'overdue' : (validDue ? 'upcoming' : '')}"><i class="fas ${overdue ? 'fa-circle-exclamation' : 'fa-calendar-day'}"></i><div class="deadline-copy"><span>${overdue ? 'Deadline passed' : 'Submission deadline'}</span><strong>${escapeAssignmentText(deadlineText)}</strong></div></div>
+            <div class="assignment-actions">${assignmentUrl ? `<a class="btn btn-primary" data-view-doc data-view-url="${escapeAssignmentAttr(assignmentUrl)}" data-view-title="${escapeAssignmentAttr(title)}" href="${escapeAssignmentAttr(assignmentUrl)}"><i class="fas fa-download"></i> Open Assignment</a>` : ''}${solutionUrl ? `<a class="btn btn-ghost" data-view-doc data-view-url="${escapeAssignmentAttr(solutionUrl)}" data-view-title="${escapeAssignmentAttr(title + ' · Solution')}" href="${escapeAssignmentAttr(solutionUrl)}"><i class="fas fa-lightbulb"></i> View Solution</a>` : ''}</div>
+            <div class="solution-note"><i class="fas ${solutionUrl ? 'fa-circle-check' : 'fa-circle-info'}"></i>${solutionUrl ? 'Solution available' : 'Solution not provided (optional)'}</div>
+        </article>`;
+            }).join("");
+            empty.style.display = items.length ? "none" : "block";
+            grid.style.display = items.length ? "grid" : "none";
+            showView("viewAssignments");
+        }
+
+        function openSubjectNotes(key) {
+            const subject = SUBJECTS[key];
+            if (!subject) return;
+            activeSubjectKey = key;
+            const notes = subject.chapters.filter(chapter => isRealUrl(chapter.notes));
+            document.getElementById('pageTitle').textContent = subject.name + ' · Notes';
+            document.getElementById('notesSummary').textContent = `${subject.name} · ${notes.length} chapter note${notes.length === 1 ? '' : 's'}`;
+            const grid = document.getElementById('subjectNotesGrid');
+            grid.innerHTML = notes.map((chapter, index) => `<article class="assignment-card">
+                <div class="assignment-card-top"><div class="assignment-icon indigo"><i class="fas fa-file-lines"></i></div><div><h3>${escapeAssignmentText(chapter.title || `Chapter ${index + 1}`)}</h3><p class="assignment-desc">${escapeAssignmentText(chapter.description || subject.name)}</p></div></div>
+                <span class="doc-badge indigo">CHAPTER NOTES</span>
+                <div class="assignment-actions">${docActionButton(chapter.notes, 'Open Notes', 'fa-book-open', true)}</div>
+            </article>`).join('');
+            document.getElementById('subjectNotesEmpty').style.display = notes.length ? 'none' : 'block';
+            grid.style.display = notes.length ? 'grid' : 'none';
+            showView('viewNotes');
+        }
+        function openNotices() {
+            const grid = document.getElementById('noticeGrid');
+            document.getElementById('pageTitle').textContent = 'Class Notices';
+            document.getElementById('noticeSummary').textContent = `${academicNotices.length} notice${academicNotices.length === 1 ? '' : 's'} for your class`;
+            grid.innerHTML = academicNotices.map(item => `<article class="assignment-card">
+                <div class="assignment-card-top"><div class="assignment-icon cyan"><i class="fas fa-bullhorn"></i></div><div><h3>${escapeAssignmentText(item.title)}</h3><p class="assignment-desc">${escapeAssignmentText(item.category || 'General')} · ${new Date(item.created_at).toLocaleDateString()}</p></div></div>
+                <p class="assignment-desc">${escapeAssignmentText(item.body || '')}</p>
+                ${item.file_url ? `<div class="assignment-actions"><a class="btn btn-primary" data-view-doc data-view-url="${escapeAssignmentAttr(item.file_url)}" data-view-title="${escapeAssignmentAttr(item.title || 'Notice attachment')}" href="${escapeAssignmentAttr(item.file_url)}"><i class="fas fa-paperclip"></i> Open attachment</a></div>` : ''}
+            </article>`).join('');
+            document.getElementById('noticeEmpty').style.display = academicNotices.length ? 'none' : 'block';
+            grid.style.display = academicNotices.length ? 'grid' : 'none';
+            showView('viewNotices');
+        }
+
+        function escapeAssignmentText(value) {
+            return String(value == null ? "" : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+        function escapeAssignmentAttr(value) { return escapeAssignmentText(value); }
+
+        /* ============ LAB MANUALS & PYQ VIEWS ============ */
+        function isRealUrl(url) { return !!url && !String(url).includes("PLACEHOLDER"); }
+        function docActionButton(url, label, icon, primary) {
+            return isRealUrl(url)
+                ? `<a class="btn ${primary ? 'btn-primary' : 'btn-ghost'}" data-view-doc data-view-url="${escapeAssignmentAttr(url)}" data-view-title="${escapeAssignmentAttr(label)}" href="${escapeAssignmentAttr(url)}"><i class="fas ${icon}"></i> ${label}</a>`
+                : `<span class="btn btn-ghost disabled"><i class="fas fa-hourglass-half"></i> Not uploaded yet</span>`;
+        }
+
+        function openLabManuals(key) {
+            const subject = SUBJECTS[key];
+            if (!subject) return;
+            activeSubjectKey = key;
+            document.getElementById("pageTitle").textContent = subject.name + " \u00b7 Lab Manuals";
+            const items = Array.isArray(subject.labItems) ? subject.labItems : [];
+            document.getElementById("labSummary").textContent = `${subject.name} \u00b7 ${items.length} lab manual${items.length === 1 ? '' : 's'}`;
+            const folder = document.getElementById("labFolderLink");
+            if (isRealUrl(subject.labManuals)) { folder.href = subject.labManuals; folder.style.display = "inline-flex"; }
+            else folder.style.display = "none";
+            const grid = document.getElementById("labGrid");
+            grid.innerHTML = items.map((item, i) => `<article class="assignment-card">
+        <div class="assignment-card-top"><div class="assignment-icon cyan"><i class="fas fa-flask"></i></div><div><h3>${escapeAssignmentText(item.title || 'Lab ' + (i + 1))}</h3><p class="assignment-desc">${escapeAssignmentText(item.description || '')}</p></div></div>
+        <span class="doc-badge cyan">EXPERIMENT ${i + 1}</span>
+        <div class="assignment-actions">${docActionButton(item.url, 'Open Manual', 'fa-file-lines', true)}</div>
+    </article>`).join("");
+            document.getElementById("labEmpty").style.display = items.length ? "none" : "block";
+            grid.style.display = items.length ? "grid" : "none";
+            showView("viewLab");
+        }
+
+        function openPyqs(key) {
+            const subject = SUBJECTS[key];
+            if (!subject) return;
+            activeSubjectKey = key;
+            document.getElementById("pageTitle").textContent = subject.name + " \u00b7 PYQs";
+            const items = Array.isArray(subject.pyqs) ? subject.pyqs : [];
+            document.getElementById("pyqSummary").textContent = `${subject.name} \u00b7 ${items.length} question paper${items.length === 1 ? '' : 's'}`;
+            const grid = document.getElementById("pyqGrid");
+            grid.innerHTML = items.map(item => {
+                const hasSolution = isRealUrl(item.solutionUrl);
+                return `<article class="assignment-card">
+        <div class="assignment-card-top"><div class="assignment-icon indigo"><i class="fas fa-file-circle-question"></i></div><div><h3>${escapeAssignmentText(item.label || 'Question paper')}</h3><p class="assignment-desc">${escapeAssignmentText(item.description || subject.name + ' question paper')}</p></div></div>
+        <span class="doc-badge indigo">PYQ</span>
+        <div class="assignment-actions">${docActionButton(item.url, 'Open Paper', 'fa-download', true)}${hasSolution ? `<a class="btn btn-ghost" data-view-doc data-view-url="${escapeAssignmentAttr(item.solutionUrl)}" data-view-title="${escapeAssignmentAttr((item.label || 'PYQ') + ' · Solution')}" href="${escapeAssignmentAttr(item.solutionUrl)}"><i class="fas fa-lightbulb"></i> Solution</a>` : ''}</div>
+        <div class="solution-note"><i class="fas ${hasSolution ? 'fa-circle-check' : 'fa-circle-info'}"></i>${hasSolution ? 'Solution available' : 'Solution not provided (optional)'}</div>
+    </article>`;
+            }).join("");
+            document.getElementById("pyqEmpty").style.display = items.length ? "none" : "block";
+            grid.style.display = items.length ? "grid" : "none";
+            showView("viewPyqs");
+        }
+
+        /* ============ VIEW 2: RENDER CHAPTER LIST ============ */
+        function openChapters(key) {
+            activeSubjectKey = key;
+            const s = SUBJECTS[key];
+            document.getElementById("pageTitle").textContent = s.name;
+            const list = document.getElementById("chapterList");
+            list.innerHTML = s.chapters.map((c, i) => `
         <div class="chapter-item ${completed[key + ':' + i] ? 'done' : ''}">
             <div class="chapter-num">${completed[key + ':' + i] ? '<i class="fas fa-check"></i>' : i + 1}</div>
-            <div class="chapter-info"><h4>${c.title}</h4><p>Chapter ${i + 1}</p></div>
+            <div class="chapter-info"><h4>${escapeAssignmentText(c.title)}</h4><p>Chapter ${i + 1} · ${escapeAssignmentText(lectureStatus(key, i).label)}</p>
+                <div class="chapter-progress"><div class="chapter-progress-track"><div class="chapter-progress-fill" style="width:${lectureStatus(key, i).percent}%"></div></div><div class="chapter-progress-label"><span>${completed[key + ':' + i] ? '✓ Fully watched' : (videoProgress[key + ':' + i] && videoProgress[key + ':' + i].seconds > 0 ? 'Watched up to ' + formatTime(videoProgress[key + ':' + i].seconds) : 'Not watched yet')}</span><span>${lectureStatus(key, i).percent}%</span></div></div>
+            </div>
             <div class="chapter-actions">
-                <button class="btn btn-watch" onclick="openPlayer('${key}', ${i})"><i class="fas fa-play"></i> Watch Video</button>
-                <a class="btn btn-ghost" href="${c.notes}" target="_blank" rel="noopener"><i class="fas fa-file-lines"></i> Notes</a>
-                <a class="btn btn-ghost" href="${c.practice}" target="_blank" rel="noopener"><i class="fas fa-pen"></i> Practice</a>
+                ${c.videoUrl ? `<button class="btn btn-watch" onclick="openPlayer('${escapeAssignmentAttr(key)}', ${i})"><i class="fas fa-play"></i> Watch Video</button>` : '<span class="btn btn-ghost disabled"><i class="fas fa-video-slash"></i> No video</span>'}
+                ${docActionButton(c.notes, 'Notes', 'fa-file-lines', false)}
+                ${docActionButton(c.practice, 'Practice', 'fa-pen', false)}
             </div>
         </div>
     `).join("");
-    showView("viewChapters");
-}
+            showView("viewChapters");
+        }
 
-function backToChapters() {
-    openChapters(activeSubjectKey);
-}
+        function backToChapters() {
+            openChapters(activeSubjectKey);
+        }
 
-/* ============ VIEW 3: VIDEO STUDY ROOM ============ */
-function openPlayer(key, index) {
-    activeSubjectKey = key;
-    activeChapterIndex = index;
-    document.getElementById("pageTitle").textContent = SUBJECTS[key].name;
-    renderPlaylist();
-    loadChapter(index);
-    showView("viewPlayer");
-}
+        /* ============ VIEW 3: VIDEO STUDY ROOM ============ */
+        function openPlayer(key, index) {
+            saveCurrentPlayback();
+            activeSubjectKey = key;
+            activeChapterIndex = index;
+            persistLastStudy(key, index);
+            renderContinueLearning();
+            document.getElementById("pageTitle").textContent = SUBJECTS[key].name;
+            renderStudyResources();
+            loadChapter(index);
+            showView("viewPlayer");
+        }
 
-function renderPlaylist() {
-    const s = SUBJECTS[activeSubjectKey];
-    const wrap = document.getElementById("playlistItems");
-    wrap.innerHTML = s.chapters.map((c, i) => {
-        const key = activeSubjectKey + ':' + i;
-        const isActive = i === activeChapterIndex;
-        const isDone = !!completed[key];
-        return `
-            <div class="playlist-item ${isActive ? 'active' : ''} ${isDone ? 'completed' : ''}" data-index="${i}" onclick="loadChapter(${i})">
-                <div class="p-num">${isDone ? '<i class="fas fa-check"></i>' : i + 1}</div>
-                <div class="p-title">${c.title}</div>
-            </div>
-        `;
-    }).join("");
-}
+        function renderStudyResources() {
+            const subject = SUBJECTS[activeSubjectKey];
+            const chapter = subject && subject.chapters[activeChapterIndex];
+            if (!subject || !chapter) return;
 
-function loadChapter(index) {
-    activeChapterIndex = index;
-    const s = SUBJECTS[activeSubjectKey];
-    const c = s.chapters[index];
-    document.getElementById("npTitle").textContent = c.title;
-    document.getElementById("npSubject").textContent = s.name;
-    renderPlaylist();
+            const title = document.getElementById("resourceChapterTitle");
+            const notes = document.getElementById("resourceNotes");
+            const practice = document.getElementById("resourcePractice");
+            const pyqs = document.getElementById("resourcePyqs");
+            if (title) title.textContent = chapter.title;
+            if (notes) {
+                notes.href = chapter.notes || "#";
+                notes.dataset.viewUrl = chapter.notes || "";
+                notes.dataset.viewTitle = chapter.title + " · Notes";
+                notes.toggleAttribute("data-view-doc", !!chapter.notes);
+                notes.style.opacity = chapter.notes ? "1" : ".55";
+                notes.onclick = chapter.notes ? null : (event) => event.preventDefault();
+            }
+            if (practice) {
+                practice.href = chapter.practice || "#";
+                practice.dataset.viewUrl = chapter.practice || "";
+                practice.dataset.viewTitle = chapter.title + " · Practice";
+                practice.toggleAttribute("data-view-doc", !!chapter.practice);
+                practice.style.opacity = chapter.practice ? "1" : ".55";
+                practice.onclick = chapter.practice ? null : (event) => event.preventDefault();
+            }
+            if (pyqs) {
+                pyqs.innerHTML = (subject.pyqs || []).length
+                    ? subject.pyqs.filter(item => isRealUrl(item.url)).map(item => `<a class="resource-pyq-link" data-view-doc data-view-url="${escapeAssignmentAttr(item.url)}" data-view-title="${escapeAssignmentAttr(item.label || 'PYQ')}" href="${escapeAssignmentAttr(item.url)}"><span>${escapeAssignmentText(item.label || 'PYQ')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join("")
+                    : '<div class="resource-empty">PYQs will appear here when added.</div>';
+            }
+        }
 
-    if (!ytReady) return; // player will load this chapter once the API signals ready
-    if (ytPlayer) {
-        ytPlayer.loadVideoById(c.videoId);
-    } else {
-        createPlayer(c.videoId);
-    }
-}
+        function loadChapter(index) {
+            activeChapterIndex = index;
+            persistLastStudy(activeSubjectKey, index);
+            renderContinueLearning();
+            const s = SUBJECTS[activeSubjectKey];
+            const c = s.chapters[index];
+            document.getElementById("npTitle").textContent = c.title;
+            document.getElementById("npSubject").textContent = s.name;
+            renderStudyResources();
 
-function markCompleted(key, index) {
-    completed[key + ':' + index] = true;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(completed));
-    renderPlaylist();
-}
+            const id = progressKey(activeSubjectKey, index);
+            const saved = videoProgress[id];
+            const startSeconds = (!completed[id] && saved) ? Math.max(0, Math.floor(saved.seconds || 0)) : 0;
+            loadMedia(activeSubjectKey, index, c.videoUrl, startSeconds);
+        }
 
-/* ============ YOUTUBE IFRAME API ============ */
-function createPlayer(videoId) {
-    ytPlayer = new YT.Player("ytPlayer", {
-        videoId: videoId,
-        playerVars: { rel: 0, modestbranding: 1 },
-        events: { onStateChange: onPlayerStateChange }
-    });
-}
+        function markCompleted(key, index) {
+            const id = progressKey(key, index);
+            completed[id] = true;
+            if (videoProgress[id]) videoProgress[id].seconds = videoProgress[id].duration || videoProgress[id].seconds;
+            saveCompleted();
+            saveVideoProgress();
+            renderStudyResources();
+            renderContinueLearning();
+            // Refresh the chapter list/subject summary when the user returns to them.
+        }
 
-function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.ENDED) {
-        // Halt on the ended frame — no auto-advance to the next chapter.
-        markCompleted(activeSubjectKey, activeChapterIndex);
-    }
-}
+        /* ============ CUSTOM MEDIA PLAYER ============ */
+        const media = document.getElementById('mediaPlayer');
+        const frame = document.getElementById('videoFrame');
+        const seekBar = document.getElementById('seekBar');
+        const volBar = document.getElementById('volBar');
+        const timeLabel = document.getElementById('timeLabel');
+        const speedSel = document.getElementById('speedSel');
+        const SPEED_KEY = 'academics_speed_v1';
+        let mediaFor = null;      // which lecture the <video> currently holds: { key, index }
+        let pendingStart = 0;     // resume position applied once metadata is loaded
+        let scrubbing = false;
+        let hideTimer = null;
 
-function onYouTubeIframeAPIReady() {
-    ytReady = true;
-    if (activeSubjectKey !== null && activeChapterIndex !== null) {
-        createPlayer(SUBJECTS[activeSubjectKey].chapters[activeChapterIndex].videoId);
-    }
-}
+        function setIcon(btn, cls) { btn.innerHTML = '<i class="fas ' + cls + '"></i>'; }
 
-/* ============ INIT ============ */
-renderSubjects();
-</script>
-<script src="https://www.youtube.com/iframe_api"></script>
+        function normalizeHostedVideoUrl(value) {
+            try {
+                const url = new URL(value, window.location.href);
+                if ((url.hostname === 'huggingface.co' || url.hostname === 'www.huggingface.co') && url.pathname.split('/').includes('blob')) {
+                    url.pathname = url.pathname.replace('/blob/', '/resolve/');
+                    url.search = '?download=true';
+                }
+                return url.href;
+            } catch (error) {
+                return value;
+            }
+        }
+
+        function loadMedia(key, index, url, startSeconds) {
+            mediaFor = { key, index };
+            pendingStart = startSeconds || 0;
+            frame.classList.remove('has-error', 'is-playing');
+            frame.classList.add('is-loading', 'show-controls');
+            seekBar.value = 0; seekBar.style.setProperty('--pct', '0%');
+            timeLabel.textContent = '0:00 / 0:00';
+            setIcon(document.getElementById('btnPlay'), 'fa-play');
+            media.pause();
+            media.src = normalizeHostedVideoUrl(url);
+            media.load();
+        }
+
+        function saveCurrentPlayback() {
+            if (!mediaFor || media.readyState < 1 || !media.currentTime) return;
+            const id = progressKey(mediaFor.key, mediaFor.index);
+            if (completed[id]) return;
+            const seconds = media.currentTime, duration = media.duration;
+            if (!Number.isFinite(seconds) || seconds < 1) return;
+            videoProgress[id] = { seconds: Math.floor(seconds), duration: Number.isFinite(duration) ? Math.floor(duration) : 0, updatedAt: Date.now() };
+            persistLastStudy(mediaFor.key, mediaFor.index);
+            saveVideoProgress();
+            renderContinueLearning();
+        }
+
+        function togglePlay() {
+            if (frame.classList.contains('has-error')) return;
+            if (media.paused || media.ended) { const p = media.play(); if (p && p.catch) p.catch(() => { }); }
+            else media.pause();
+        }
+        function seekBy(delta) {
+            if (!Number.isFinite(media.duration)) return;
+            media.currentTime = Math.min(media.duration, Math.max(0, media.currentTime + delta));
+        }
+        function updateTime() {
+            const d = Number.isFinite(media.duration) ? media.duration : 0;
+            timeLabel.textContent = formatTime(media.currentTime) + ' / ' + formatTime(d);
+            if (!scrubbing) {
+                const pct = d ? (media.currentTime / d) * 100 : 0;
+                seekBar.value = d ? Math.round((media.currentTime / d) * 1000) : 0;
+                seekBar.style.setProperty('--pct', pct + '%');
+            }
+        }
+        function revealControls() {
+            frame.classList.add('show-controls');
+            frame.classList.remove('hide-cursor');
+            clearTimeout(hideTimer);
+            if (!media.paused) hideTimer = setTimeout(() => { frame.classList.remove('show-controls'); frame.classList.add('hide-cursor'); }, 2600);
+        }
+        function toggleFullscreen() {
+            const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+            if (fsEl) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+            if (frame.requestFullscreen) frame.requestFullscreen();
+            else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+            else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen(); // iOS Safari
+        }
+
+        (function initPlayer() {
+            let savedSpeed = 1;
+            try { savedSpeed = parseFloat(localStorage.getItem(SPEED_KEY)) || 1; } catch (e) { }
+            speedSel.value = String(savedSpeed);
+            if (speedSel.value !== String(savedSpeed)) speedSel.value = '1';
+            media.defaultPlaybackRate = parseFloat(speedSel.value);
+            media.playbackRate = parseFloat(speedSel.value);
+
+            const btnPlay = document.getElementById('btnPlay');
+            const btnMute = document.getElementById('btnMute');
+
+            btnPlay.addEventListener('click', togglePlay);
+            document.getElementById('bigPlay').addEventListener('click', togglePlay);
+            media.addEventListener('click', togglePlay);
+            document.getElementById('btnBack').addEventListener('click', () => seekBy(-10));
+            document.getElementById('btnFwd').addEventListener('click', () => seekBy(10));
+            document.getElementById('btnFs').addEventListener('click', toggleFullscreen);
+            media.addEventListener('dblclick', toggleFullscreen);
+
+            btnMute.addEventListener('click', () => { media.muted = !media.muted; });
+            volBar.addEventListener('input', () => {
+                media.volume = parseFloat(volBar.value);
+                media.muted = media.volume === 0;
+                volBar.style.setProperty('--pct', (media.volume * 100) + '%');
+            });
+            media.addEventListener('volumechange', () => {
+                const muted = media.muted || media.volume === 0;
+                setIcon(btnMute, muted ? 'fa-volume-xmark' : (media.volume < 0.5 ? 'fa-volume-low' : 'fa-volume-high'));
+                volBar.value = media.muted ? 0 : media.volume;
+                volBar.style.setProperty('--pct', ((media.muted ? 0 : media.volume) * 100) + '%');
+            });
+            volBar.style.setProperty('--pct', '100%');
+
+            speedSel.addEventListener('change', () => {
+                const rate = parseFloat(speedSel.value) || 1;
+                media.defaultPlaybackRate = rate; media.playbackRate = rate;
+                try { localStorage.setItem(SPEED_KEY, String(rate)); } catch (e) { }
+            });
+
+            seekBar.addEventListener('pointerdown', () => { scrubbing = true; });
+            seekBar.addEventListener('input', () => {
+                if (!Number.isFinite(media.duration)) return;
+                const t = (seekBar.value / 1000) * media.duration;
+                seekBar.style.setProperty('--pct', (seekBar.value / 10) + '%');
+                media.currentTime = t;
+                timeLabel.textContent = formatTime(t) + ' / ' + formatTime(media.duration);
+            });
+            const endScrub = () => { scrubbing = false; };
+            seekBar.addEventListener('pointerup', endScrub);
+            seekBar.addEventListener('change', endScrub);
+            window.addEventListener('pointerup', endScrub);
+
+            media.addEventListener('loadedmetadata', () => {
+                if (pendingStart > 0 && pendingStart < media.duration - 2) media.currentTime = pendingStart;
+                pendingStart = 0;
+                media.playbackRate = parseFloat(speedSel.value) || 1;
+                updateTime();
+            });
+            media.addEventListener('loadeddata', () => frame.classList.remove('is-loading'));
+            media.addEventListener('canplay', () => frame.classList.remove('is-loading'));
+            media.addEventListener('waiting', () => frame.classList.add('is-loading'));
+            media.addEventListener('playing', () => { frame.classList.remove('is-loading'); });
+            media.addEventListener('timeupdate', updateTime);
+            media.addEventListener('durationchange', updateTime);
+            media.addEventListener('play', () => { frame.classList.add('is-playing'); setIcon(btnPlay, 'fa-pause'); revealControls(); });
+            media.addEventListener('pause', () => {
+                frame.classList.remove('is-playing'); frame.classList.add('show-controls'); frame.classList.remove('hide-cursor');
+                setIcon(btnPlay, media.ended ? 'fa-rotate-right' : 'fa-play');
+                saveCurrentPlayback();
+            });
+            media.addEventListener('ended', () => {
+                // A lecture counts as complete only when it plays to the end.
+                if (mediaFor) markCompleted(mediaFor.key, mediaFor.index);
+                setIcon(btnPlay, 'fa-rotate-right');
+            });
+            media.addEventListener('error', () => {
+                if (!media.getAttribute('src')) return;
+                frame.classList.remove('is-loading', 'is-playing');
+                frame.classList.add('has-error');
+            });
+
+            frame.addEventListener('mousemove', revealControls);
+            frame.addEventListener('touchstart', revealControls, { passive: true });
+            frame.addEventListener('mouseleave', () => { if (!media.paused) { clearTimeout(hideTimer); hideTimer = setTimeout(() => frame.classList.remove('show-controls'), 600); } });
+            document.addEventListener('fullscreenchange', () => setIcon(document.getElementById('btnFs'), document.fullscreenElement ? 'fa-compress' : 'fa-expand'));
+
+            // Keyboard shortcuts (only while the study room is open)
+            document.addEventListener('keydown', (e) => {
+                if (!document.getElementById('viewPlayer').classList.contains('active')) return;
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                const tag = e.target.tagName;
+                if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+                const key = e.key.toLowerCase();
+                if ((key === ' ' || key === 'k') && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
+                else if (key === 'k') { togglePlay(); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); seekBy(5); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); seekBy(-5); }
+                else if (key === 'j') seekBy(-10);
+                else if (key === 'l') seekBy(10);
+                else if (key === 'f') toggleFullscreen();
+                else if (key === 'm') media.muted = !media.muted;
+            });
+        })();
+
+        async function loadAcademicData() {
+            const meta = authSession.user.user_metadata || {};
+            const { data: profile, error: profileError } = await supabase.from('profiles')
+                .select('full_name,roll_no,branch,year').eq('id', academicUserId).maybeSingle();
+            if (profileError) throw profileError;
+            const student = profile || {};
+            const branch = student.branch || meta.branch || '';
+            const year = student.year || meta.year || '';
+            document.getElementById('profileScope').textContent = branch && year
+                ? `${branch} · ${year}${meta.semester ? ` · Semester ${meta.semester}` : ''}`
+                : 'Your account needs a branch and year to load personalized academics.';
+            const subjectResult = await supabase.from('academic_subjects').select('*').order('name');
+            if (subjectResult.error) throw subjectResult.error;
+            const subjectRows = subjectResult.data || [];
+            const subjectIds = subjectRows.map(s => s.id);
+            const [chapterResult, assignmentResult, noticeResult, pyqResult] = await Promise.all([
+                subjectIds.length ? supabase.from('academic_chapters').select('*').in('subject_id', subjectIds).order('chapter_order') : Promise.resolve({ data: [], error: null }),
+                supabase.from('academic_assignments').select('*').order('due_at'),
+                supabase.from('academic_notices').select('*').order('created_at', { ascending: false }),
+                supabase.from('academic_pyqs').select('*').order('exam_year', { ascending: false })
+            ]);
+            for (const result of [chapterResult, assignmentResult, noticeResult, pyqResult]) if (result.error) throw result.error;
+            academicAssignments = assignmentResult.data || [];
+            academicNotices = noticeResult.data || [];
+            academicPyqs = pyqResult.data || [];
+            subjectRows.forEach((row, index) => {
+                const chapters = (chapterResult.data || []).filter(c => c.subject_id === row.id).map(c => ({
+                    id: c.id, title: c.title, description: c.description, videoUrl: c.video_url,
+                    notes: c.notes_url, practice: c.practice_url
+                }));
+                const assignmentItems = academicAssignments.filter(a => a.subject_id === row.id).map(a => ({
+                    title: a.title, description: a.description, deadline: a.due_at,
+                    assignmentUrl: a.file_url, solutionUrl: null
+                }));
+                const pyqs = academicPyqs.filter(p => p.subject_id === row.id).map(p => ({
+                    label: `${p.exam_year || 'PYQ'} · ${p.title}`, description: row.name, url: p.file_url
+                }));
+                SUBJECTS[row.id] = {
+                    name: row.name, code: row.code, branch: row.branch, year: row.year,
+                    icon: ['fa-book-open','fa-code','fa-microchip','fa-calculator'][index % 4],
+                    cls: ['icon-indigo','icon-blue','icon-cyan','icon-amber'][index % 4],
+                    chapters, assignmentItems, labItems: [], pyqs
+                };
+            });
+            renderSubjects();
+        }
+
+        Object.assign(window, { showView, openAssignments, openSubjectNotes, openNotices, openLabManuals, openPyqs, openChapters, backToChapters, openPlayer, loadChapter, continueLastStudy });
+
+        const viewer = document.getElementById('documentViewer');
+        const viewerFrame = document.getElementById('documentViewerFrame');
+        function closeDocumentViewer() {
+            viewer.classList.remove('open');
+            viewer.setAttribute('aria-hidden', 'true');
+            viewerFrame.src = 'about:blank';
+        }
+        document.addEventListener('click', event => {
+            const link = event.target.closest('a[data-view-doc]');
+            if (!link) return;
+            event.preventDefault();
+            const rawUrl = link.dataset.viewUrl || link.href;
+            let fileUrl;
+            try {
+                fileUrl = new URL(rawUrl, window.location.href);
+                if (fileUrl.protocol !== 'https:') throw new Error('Only HTTPS documents can be previewed.');
+            } catch (error) {
+                console.error('Document preview blocked:', error);
+                return;
+            }
+            const extension = fileUrl.pathname.split('.').pop().toLowerCase();
+            const officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+            viewerFrame.src = officeExtensions.includes(extension)
+                ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl.href)}`
+                : fileUrl.href;
+            document.getElementById('documentViewerTitle').textContent = link.dataset.viewTitle || link.textContent.trim() || 'Document';
+            const openLink = document.getElementById('documentViewerOpen');
+            openLink.href = fileUrl.href;
+            openLink.download = '';
+            viewer.classList.add('open');
+            viewer.setAttribute('aria-hidden', 'false');
+        });
+        document.getElementById('documentViewerClose').addEventListener('click', closeDocumentViewer);
+        viewer.addEventListener('click', event => { if (event.target === viewer) closeDocumentViewer(); });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && viewer.classList.contains('open')) closeDocumentViewer(); });
+
+        // Save playback position regularly so reopening the page resumes near the same timestamp.
+        setInterval(() => { if (!media.paused) saveCurrentPlayback(); }, 5000);
+        window.addEventListener('beforeunload', saveCurrentPlayback);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) saveCurrentPlayback(); });
+
+        /* ============ INIT ============ */
+        loadAcademicData().catch(error => {
+            console.error('Academics load failed:', error);
+            document.getElementById('profileScope').textContent = 'Could not connect to academic resources.';
+            document.getElementById('subjectGrid').innerHTML = `<div class="assignment-empty" style="display:block"><h3>Academics setup is not ready</h3><p>${escapeAssignmentText(error.message || error)}. Run schema_academics_content.sql in the Supabase SQL Editor and make sure your account has a branch and year.</p></div>`;
+        });
+    </script>
 
 </body>
+
 </html>

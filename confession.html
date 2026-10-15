@@ -371,6 +371,8 @@
         .filter-tabs {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .filter-btn {
@@ -1006,10 +1008,11 @@
                 </div>
 
                 <div class="feed-header">
-                    <h3>Recent Confessions</h3>
+                    <h3 id="feedHeading">Recent Confessions</h3>
                     <div class="filter-tabs">
-                        <button class="filter-btn active">Latest</button>
-                        <button class="filter-btn">Top Voted</button>
+                        <button class="filter-btn active" data-view="feed" data-filter="latest">Latest</button>
+                        <button class="filter-btn" data-view="feed" data-filter="top">Top Voted</button>
+                        <button class="filter-btn" data-view="mine">My Posts</button>
                     </div>
                 </div>
 
@@ -1094,6 +1097,7 @@
         let myPostIds = new Set();
         let myLikes = new Set();
         let currentFilter = "latest";
+        let currentView = "feed";
         const categoryLabels = {
             "tag-crush": "Crush", "tag-rant": "Rant", "tag-funny": "Funny", "tag-faculty": "Faculty"
         };
@@ -1159,6 +1163,13 @@
             const feed = document.getElementById("confessionFeed");
             feed.innerHTML = `<div class="confession-card" style="opacity:1;transform:none"><div class="c-body" style="${isError ? 'color:var(--danger)' : ''}">${escapeHTML(message)}</div></div>`;
         }
+        async function loadMyPostIds() {
+            myPostIds = new Set();
+            if (!currentUser) return;
+            const { data: mine, error } = await sb.rpc("my_confession_ids");
+            if (error) throw error;
+            myPostIds = new Set((mine || []).map(String));
+        }
         async function loadFeed() {
             if (!sb) {
                 showStatus("Connect Supabase to load live confessions. Add your project URL and anon key in this file, then run confession_schema.sql.");
@@ -1167,23 +1178,53 @@
             const { data: { session }, error: authError } = await sb.auth.getSession();
             currentUser = session?.user || null;
             if (authError) console.warn(authError);
-            // The database view excludes hidden posts server-side, so hidden content is not
-            // exposed even if someone queries the view directly from the browser.
-            let query = sb.from("public_confessions")
-                .select("id,body,tag,avatar_emoji,created_at,upvote_count,comment_count,media_url,media_type");
-            query = currentFilter === "top" ? query.order("upvote_count", { ascending: false }) : query.order("created_at", { ascending: false });
-            const { data, error } = await query.limit(100);
+            // Apni posts ki ids (delete button sirf inhi par dikhega). Anonymity bani rehti hai:
+            // server sirf ids deta hai, kisi aur ko author pata nahi chalta.
+            let myPostIdsError = null;
+            try { await loadMyPostIds(); }
+            catch (error) { myPostIdsError = error; console.warn("my_confession_ids:", error.message); }
+
+            // Public feed stays capped at 100; My Posts fetches every authored ID in
+            // small batches so older posts remain reachable even after the feed grows.
+            let data = [];
+            let error = null;
+            const columns = "id,body,tag,avatar_emoji,created_at,upvote_count,comment_count,media_url,media_type";
+            if (currentView === "mine") {
+                if (!currentUser) {
+                    document.getElementById("feedHeading").textContent = "My Posts";
+                    showStatus("Sign in to view and delete your anonymous posts.");
+                    return;
+                }
+                if (myPostIdsError) {
+                    document.getElementById("feedHeading").textContent = "My Posts";
+                    showStatus("Could not load your posts: " + myPostIdsError.message, true);
+                    return;
+                }
+                const ids = [...myPostIds];
+                if (!ids.length) {
+                    document.getElementById("feedHeading").textContent = "My Posts";
+                    showStatus("You haven't posted any confessions yet.");
+                    return;
+                }
+                const batches = [];
+                for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
+                const results = await Promise.all(batches.map(idsBatch => sb.from("public_confessions")
+                    .select(columns).in("id", idsBatch).order("created_at", { ascending: false })));
+                error = results.find(result => result.error)?.error || null;
+                data = results.flatMap(result => result.data || [])
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                document.getElementById("feedHeading").textContent = "My Posts";
+            } else {
+                document.getElementById("feedHeading").textContent = "Recent Confessions";
+                let query = sb.from("public_confessions").select(columns);
+                query = currentFilter === "top" ? query.order("upvote_count", { ascending: false }) : query.order("created_at", { ascending: false });
+                const result = await query.limit(100);
+                data = result.data || [];
+                error = result.error;
+            }
             if (error) {
                 showStatus("Could not load confessions: " + error.message, true);
                 return;
-            }
-            // Apni posts ki ids (delete button sirf inhi par dikhega). Anonymity bani rehti hai:
-            // server sirf ids deta hai, kisi aur ko author pata nahi chalta.
-            myPostIds = new Set();
-            if (currentUser) {
-                const { data: mine, error: mineErr } = await sb.rpc("my_confession_ids");
-                if (mineErr) console.warn("my_confession_ids:", mineErr.message);
-                else myPostIds = new Set((mine || []).map(String));
             }
             myLikes = new Set();
             if (currentUser) {
@@ -1195,7 +1236,7 @@
             const feed = document.getElementById("confessionFeed");
             feed.innerHTML = "";
             if (!data?.length) {
-                showStatus("No confessions yet. Be the first to share something anonymously!");
+                showStatus(currentView === "mine" ? "No visible posts here. Your deleted or moderator-hidden posts won't appear." : "No confessions yet. Be the first to share something anonymously!");
                 return;
             }
             data.forEach((post, i) => feed.appendChild(renderPost(post, i)));
@@ -1354,9 +1395,12 @@
             } catch (e) { alert("Post failed: " + (e.message || "Unknown error")); }
             finally { isPosting = false; submit.disabled = false; }
         }
-        document.querySelectorAll(".filter-btn").forEach((btn, i) => btn.addEventListener("click", async () => {
+        document.querySelectorAll(".filter-btn").forEach(btn => btn.addEventListener("click", async () => {
             document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active"); currentFilter = i === 1 ? "top" : "latest"; await loadFeed();
+            btn.classList.add("active");
+            currentView = btn.dataset.view || "feed";
+            if (btn.dataset.filter) currentFilter = btn.dataset.filter;
+            await loadFeed();
         }));
         const confessionInput = document.getElementById("confessionInput");
         confessionInput.addEventListener("input", e => autoResize(e.target));

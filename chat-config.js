@@ -7,6 +7,6 @@
 export const CLOUDINARY_CLOUD = 'jgkwrktm';
 export const CLOUDINARY_PRESET = 'mgm_chat';
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;   // Cloudinary free plan limit ~10 MB
+export const MAX_FILE_BYTES = 100 * 1024 * 1024; // 100 MB
 export const PAGE_SIZE = 40;                 // ek baar me kitne msgs load hon
 export const ENABLE_PRESENCE = true;              // Online/Offline dot (false karne par Realtime load kam hota hai)

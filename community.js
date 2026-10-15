@@ -20,7 +20,34 @@ const initialsOf = (n) => (n || '?').trim().split(/\s+/).map((w) => w[0]).join('
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const sanitizeQ = (q) => q.replace(/[,()%*\\]/g, ' ').trim();
 const IST_MS = 5.5 * 3600 * 1000;
+let pendingResourceShare = '';
+try {
+  const sharedUrl = new URL(new URLSearchParams(location.search).get('share') || '');
+  if (sharedUrl.origin === location.origin && sharedUrl.pathname.endsWith('/elibrary.html') && sharedUrl.searchParams.has('resource')) {
+    pendingResourceShare = `Shared notes: ${sharedUrl.href}`;
+  }
+} catch { /* no valid shared resource link */ }
 const istDate = (iso) => new Date(new Date(iso).getTime() + IST_MS).toISOString().slice(0, 10);
+
+function appendTextWithLinks(container, text) {
+  const pattern = /https?:\/\/[^\s<>"']+/g;
+  let cursor = 0;
+  for (const match of String(text).matchAll(pattern)) {
+    const raw = match[0];
+    const trailing = raw.match(/[),.!?;:]+$/)?.[0] || '';
+    const value = trailing ? raw.slice(0, -trailing.length) : raw;
+    if (match.index > cursor) container.append(document.createTextNode(text.slice(cursor, match.index)));
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('unsupported protocol');
+      const link = document.createElement('a');
+      link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = value;
+      container.append(link, document.createTextNode(trailing));
+    } catch { container.append(document.createTextNode(raw)); }
+    cursor = match.index + raw.length;
+  }
+  if (cursor < text.length) container.append(document.createTextNode(text.slice(cursor)));
+}
 
 function dayLabel(iso) {
   const d = new Date(iso);
@@ -800,7 +827,7 @@ function msgRow(m) {
     const t = document.createElement('div'); t.className = 'deleted-message'; t.textContent = 'This message was deleted'; bubble.appendChild(t);
   } else {
     if (p.t === 'file' && p.file) bubble.appendChild(fileEl(p.file, m.id));
-    if (p.text) { const t = document.createElement('div'); t.textContent = p.text; bubble.appendChild(t); }
+    if (p.text) { const t = document.createElement('div'); appendTextWithLinks(t, p.text); bubble.appendChild(t); }
   }
 
   if (!deleted && (!m.archived || conversation?.isGroup)) {
@@ -1131,6 +1158,11 @@ async function openConv(id) {
   }
   if (S.current !== id) return;
   renderMessages(c, 'bottom');
+  if (pendingResourceShare && S.priv && (c.isGroup || !S.blocked.has(c.other.id)) && !(c.status === 'pending' && c.requestedBy !== S.me)) {
+    $('msgInput').value = pendingResourceShare;
+    pendingResourceShare = '';
+    toast('Notes link ready hai. Send se pehle review kar lo.', 'fa-link');
+  }
   await recordReceived(c, c.messages, true);
   // Refresh may update receipt state after the first render; redraw so the
   // visible tick matches that state. renderMessages('stay') preserves scroll.

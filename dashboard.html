@@ -336,6 +336,14 @@ html{overflow-x:hidden;max-width:100vw;}
         .deadline-bar { margin-top: 13px; height: 6px; border-radius: 4px; background: rgba(225,74,59,0.18); overflow: hidden; }
         .deadline-bar span { display: block; height: 100%; width: 84%; border-radius: 4px; background: linear-gradient(90deg, var(--danger), var(--danger-light)); animation: barGrow 1.4s .4s var(--ease) both; }
 
+        /* ---- Academic assignments widget ---- */
+        .assignment-list { display: grid; gap: 11px; }
+        .dashboard-assignment { padding: 13px 14px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface-alt); }
+        .dashboard-assignment h4 { font: 600 13px 'Sora', sans-serif; color: var(--ink); line-height: 1.4; }
+        .dashboard-assignment p { margin-top: 5px; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+        .assignment-empty { padding: 16px 12px; text-align: center; color: var(--ink-faint); font-size: 12px; line-height: 1.55; background: var(--surface-alt); border-radius: 13px; }
+        .assignment-link { display: inline-flex; margin-top: 13px; color: var(--blue); font-size: 12px; font-weight: 700; text-decoration: none; }
+
         /* ---- Notices widget ---- */
         .notice-list { list-style: none; }
         .notice-list li { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--ink); display: flex; align-items: flex-start; gap: 12px; transition: padding-left .2s var(--ease); }
@@ -495,6 +503,12 @@ html{overflow-x:hidden;max-width:100vw;}
             </div>
 
             <div class="card">
+                <div class="card-title">Upcoming assignments <span class="icon-chip icon-danger"><i class="fas fa-hourglass-half"></i></span></div>
+                <div class="assignment-list" id="dashboardAssignments" aria-live="polite"><div class="assignment-empty">Loading assignments…</div></div>
+                <a class="assignment-link" href="acadmics.html">Open all assignments <i class="fas fa-arrow-right" style="margin:2px 0 0 7px;"></i></a>
+            </div>
+
+            <div class="card">
                 <div class="card-title">Your class <span class="icon-chip icon-indigo"><i class="fas fa-users"></i></span></div>
                 <p id="classSummary" style="font-size:14px;line-height:1.6;color:var(--ink-soft);">Loading class details…</p>
                 <p id="todayScheduleCount" class="hint" style="text-align:left;">—</p>
@@ -521,7 +535,7 @@ html{overflow-x:hidden;max-width:100vw;}
     </main>
 
     <script type="module">
-        import { initDashboard } from './routine-attendance.js';
+        import { initDashboard } from './routine-attendance.js?v=class-switch-rpc-20261015-2';
         initDashboard();
     </script>
 

@@ -903,6 +903,31 @@ function blobUrl(key, file) {
   return S.blobs.get(key);
 }
 
+function makeReceiptTicks(m) {
+  const ticks = document.createElement('span');
+  const status = m.pending ? 'sending' : (m.receipt || 'sent');
+  ticks.className = 'receipt-ticks ' + (status === 'sending' ? 'tick-pending'
+    : status === 'sent' ? 'tick-sent' : status === 'read' ? 'tick-read' : 'tick-delivered');
+  if (status === 'sending') {
+    const clock = document.createElement('i');
+    clock.className = 'fas fa-clock';
+    clock.setAttribute('aria-hidden', 'true');
+    ticks.appendChild(clock);
+  } else {
+    const checkCount = status === 'sent' ? 1 : 2;
+    for (let i = 0; i < checkCount; i++) {
+      const check = document.createElement('span');
+      check.className = 'receipt-check';
+      check.textContent = '\u2713';
+      ticks.appendChild(check);
+    }
+  }
+  ticks.title = status === 'sending' ? 'Sending'
+    : status === 'read' ? 'Seen' : status === 'delivered' ? 'Delivered' : 'Sent';
+  ticks.setAttribute('aria-label', ticks.title);
+  return ticks;
+}
+
 function msgRow(m) {
   const mine = m.sender_id === S.me;
   const conversation = S.convs.get(m.conversation_id);
@@ -980,6 +1005,7 @@ function msgRow(m) {
     const actions = document.createElement('div'); actions.className = 'message-actions';
     const moreBtn = document.createElement('button');
     moreBtn.type = 'button'; moreBtn.className = 'message-menu-trigger'; moreBtn.title = 'Message actions';
+    moreBtn.disabled = Boolean(m.pending);
     moreBtn.setAttribute('aria-label', 'Message actions');
     moreBtn.innerHTML = '<i class="fas fa-ellipsis"></i>';
     const picker = document.createElement('div'); picker.className = 'reaction-picker';
@@ -1038,7 +1064,7 @@ function msgRow(m) {
     let lastTapAt = 0;
     let suppressMenuClick = false;
     bubble.addEventListener('pointerdown', (e) => {
-      if (e.pointerType !== 'touch' || e.target.closest('button, a, input')) return;
+      if (m.pending || e.pointerType !== 'touch' || e.target.closest('button, a, input')) return;
       const now = Date.now();
       const canDoubleTap = !e.target.closest('img');
       if (canDoubleTap && lastTapAt && now - lastTapAt < 360) {
@@ -1065,7 +1091,7 @@ function msgRow(m) {
     for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
       bubble.addEventListener(eventName, () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; } });
     }
-    bubble.addEventListener('contextmenu', (e) => { e.preventDefault(); setMenuOpen(true); });
+    bubble.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!m.pending) setMenuOpen(true); });
     actions.append(moreBtn, menu);
 
     const ageMs = Date.now() - new Date(m.created_at).getTime();
@@ -1088,19 +1114,7 @@ function msgRow(m) {
   const meta = document.createElement('div'); meta.className = 'meta-line';
   meta.innerHTML = (m.edited_at && !deleted ? 'Edited - ' : '') + fmtTime(m.created_at);
   if (mine) {
-    const status = m.receipt || 'sent';
-    const ticks = document.createElement('span');
-    ticks.className = 'receipt-ticks ' + (status === 'sent' ? 'tick-sent' : status === 'read' ? 'tick-read' : 'tick-delivered');
-    const checkCount = status === 'sent' ? 1 : 2;
-    for (let i = 0; i < checkCount; i++) {
-      const check = document.createElement('span');
-      check.className = 'receipt-check';
-      check.textContent = '\u2713';
-      ticks.appendChild(check);
-    }
-    ticks.title = status === 'read' ? 'Seen' : status === 'delivered' ? 'Delivered' : 'Sent';
-    ticks.setAttribute('aria-label', ticks.title);
-    meta.append(' ', ticks);
+    meta.append(' ', makeReceiptTicks(m));
   }
   bubble.appendChild(meta);
   wrap.appendChild(bubble);
@@ -1309,6 +1323,80 @@ function renderMessages(c, mode = 'bottom') {
     : Math.min(prevTop, Math.max(0, area.scrollHeight - area.clientHeight));
 }
 
+function appendOptimisticMessage(c, message) {
+  if (S.current !== c.id) return;
+  if (c.messages.at(-1) !== message) {
+    renderMessages(c, 'bottom');
+    return;
+  }
+  const area = $('messagesArea');
+  const previousRow = [...area.children].reverse()
+    .find((element) => element.classList.contains('msg-row') && element.dataset.messageId);
+  const previousMessage = previousRow && c.messages.find((item) => item.id === previousRow.dataset.messageId);
+  if (!previousRow) {
+    area.querySelectorAll(':scope > .empty-note').forEach((note) => note.remove());
+  }
+  if (!previousMessage || new Date(previousMessage.created_at).toDateString() !== new Date(message.created_at).toDateString()) {
+    const divider = document.createElement('div');
+    divider.className = 'day-divider';
+    divider.innerHTML = `<span>${esc(dayLabel(message.created_at))}</span>`;
+    area.appendChild(divider);
+  }
+  area.appendChild(msgRow(message));
+  area.scrollTop = area.scrollHeight;
+}
+
+function reconcilePendingMessage(c, pending, saved) {
+  const oldIndex = c.messages.indexOf(pending);
+  if (oldIndex < 0 || !pending.pending) return false;
+  const oldId = pending.id;
+  const oldDay = new Date(pending.created_at).toDateString();
+  c.ids.delete(oldId);
+  Object.assign(pending, saved, {
+    _p: pending._p,
+    reactions: pending.reactions || [],
+    receipt: 'sent',
+    pending: false
+  });
+  c.ids.add(pending.id);
+  c.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const newIndex = c.messages.indexOf(pending);
+  const row = [...$('messagesArea').querySelectorAll('.msg-row')]
+    .find((element) => element.dataset.messageId === oldId);
+  const reordered = oldIndex !== newIndex || oldDay !== new Date(pending.created_at).toDateString();
+  if (S.current === c.id) {
+    if (reordered) renderMessages(c, 'stay');
+    else if (row) {
+      row.dataset.messageId = pending.id;
+      const meta = row.querySelector('.meta-line');
+      if (meta?.firstChild?.nodeType === Node.TEXT_NODE) meta.firstChild.textContent = fmtTime(pending.created_at);
+      row.querySelector('.receipt-ticks')?.replaceWith(makeReceiptTicks(pending));
+      row.querySelector('.message-menu-trigger')?.removeAttribute('disabled');
+    }
+  }
+  if (c.messages.at(-1) === pending) {
+    c.preview = previewOf(pending);
+    c.lastAt = pending.created_at;
+  }
+  renderListsSoon();
+  return true;
+}
+
+function rollbackOptimisticMessage(c, message) {
+  const index = c.messages.indexOf(message);
+  if (index < 0) return;
+  const wasLast = index === c.messages.length - 1;
+  c.messages.splice(index, 1);
+  c.ids.delete(message.id);
+  if (wasLast) {
+    const latest = c.messages.at(-1);
+    c.preview = latest ? previewOf(latest) : message.previousPreview;
+    c.lastAt = latest?.created_at || message.previousLastAt;
+  }
+  renderListsSoon();
+  if (S.current === c.id) renderMessages(c, 'stay');
+}
+
 // Agar messages kam hain aur scrollbar nahi bana, to scroll event nahi aayega: khud purane load karo
 async function fillIfShort(c, depth = 0) {
   const area = $('messagesArea');
@@ -1445,22 +1533,59 @@ function sendErrorMessage(e) {
   return 'Message could not be sent: ' + (e?.message || 'Unknown error');
 }
 
-async function sendPayload(c, payload) {
+async function sendPayload(c, payload, optimisticMessage = null) {
   const keyVersion = c.isGroup ? c.groupKeyVersion : null;
   const key = await keyFor(c, keyVersion || undefined);
   const { ciphertext, iv } = await encryptPayload(key, payload);
+  if (optimisticMessage) {
+    optimisticMessage.ciphertext = ciphertext;
+    optimisticMessage.iv = iv;
+    if (c.isGroup) optimisticMessage.group_key_version = keyVersion;
+  }
   const messageRow = { conversation_id: c.id, sender_id: S.me, ciphertext, iv };
   if (c.isGroup) messageRow.group_key_version = keyVersion;
   const { data, error } = await supabase.from('messages')
     .insert(messageRow).select().single();
   if (error) throw error;
   data._p = payload;                       // already plain hai, dobara decrypt nahi
-  await addMessages(c, [data]);
-  c.preview = previewOf(data);
-  c.lastAt = data.created_at;
-  renderListsSoon();
-  if (S.current === c.id) renderMessages(c, 'bottom');
+  let reconciled = false;
+  if (optimisticMessage && c.messages.includes(optimisticMessage)) {
+    reconciled = optimisticMessage.pending
+      ? reconcilePendingMessage(c, optimisticMessage, data)
+      : true;
+  } else if (!c.clearedBefore || new Date(data.created_at) > new Date(c.clearedBefore)) {
+    await addMessages(c, [data]);
+    c.preview = previewOf(data);
+    c.lastAt = data.created_at;
+  }
+  if (!reconciled) {
+    renderListsSoon();
+    if (S.current === c.id) renderMessages(c, 'bottom');
+  }
   void archiveOverflow(c);
+}
+
+function addOptimisticText(c, payload) {
+  const message = {
+    id: `pending-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+    conversation_id: c.id,
+    sender_id: S.me,
+    created_at: new Date().toISOString(),
+    _p: payload,
+    reactions: [],
+    receipt: 'sending',
+    pending: true,
+    previousPreview: c.preview,
+    previousLastAt: c.lastAt
+  };
+  c.ids.add(message.id);
+  c.messages.push(message);
+  c.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  c.preview = previewOf(message);
+  c.lastAt = message.created_at;
+  appendOptimisticMessage(c, message);
+  renderListsSoon();
+  return message;
 }
 
 async function sendText() {
@@ -1469,11 +1594,14 @@ async function sendText() {
   const text = input.value.trim();
   if (!c || !text) return;
   const replyTo = replyDescriptorFor(c);
+  const payload = { t: 'text', text, ...(replyTo ? { replyTo } : {}) };
   input.value = '';
+  const optimisticMessage = addOptimisticText(c, payload);
   try {
-    await sendPayload(c, { t: 'text', text, ...(replyTo ? { replyTo } : {}) });
+    await sendPayload(c, payload, optimisticMessage);
     if (replyTo) clearReplyTarget(c.id, replyTo.messageId);
   } catch (e) {
+    rollbackOptimisticMessage(c, optimisticMessage);
     if (S.current === c.id && !input.value) input.value = text;
     toast(sendErrorMessage(e), 'fa-triangle-exclamation');
   }
@@ -1795,10 +1923,20 @@ async function onNewMessage(m) {
     c = S.convs.get(m.conversation_id);
     if (!c) return;
   }
-  if (c.ids.has(m.id)) return;                                   // apna hi bheja hua (echo)
+  if (c.ids.has(m.id)) return;                                   // already rendered locally or by realtime
   if (!c.isGroup && m.sender_id !== S.me && S.blocked.has(c.other.id)) return;
   if (c.clearedBefore && new Date(m.created_at) <= new Date(c.clearedBefore)) return;
   if (c.isGroup && c.myJoinedAt && new Date(m.created_at) < new Date(c.myJoinedAt)) return;
+
+  if (m.sender_id === S.me) {
+    const pending = c.messages.find((item) => item.pending
+      && item.ciphertext === m.ciphertext && item.iv === m.iv);
+    if (pending) {
+      reconcilePendingMessage(c, pending, { ...m, _p: pending._p });
+      void archiveOverflow(c);
+      return;
+    }
+  }
 
   if (c.loaded) await addMessages(c, [m]); else await decryptMsg(c, m);
   c.preview = previewOf(m);

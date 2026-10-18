@@ -1856,6 +1856,52 @@
             }
         }
 
+        /* Touch screens keep the player controls available and easy to tap. */
+        @media (hover: none) and (pointer: coarse) {
+            .video-frame .player-controls {
+                padding: 30px 8px calc(8px + env(safe-area-inset-bottom));
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+
+            .video-frame .controls-row { gap: 4px; }
+            .video-frame .ctrl-btn {
+                width: 40px;
+                min-width: 40px;
+                height: 42px;
+                border-radius: 12px;
+                transition: none;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .video-frame .ctrl-btn:active { background: rgba(255, 255, 255, .18); }
+            .video-frame .player-controls input[type=range] { touch-action: pan-x; }
+            .video-frame .speed-select {
+                min-height: 40px;
+                padding: 6px 7px;
+                font-size: 14px;
+                touch-action: manipulation;
+            }
+            .video-frame #speedSel { max-width: 64px; }
+            .video-frame #qualitySel { max-width: 70px; }
+            .video-frame .big-play {
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+                transition: transform .16s ease, background .16s ease, opacity .16s ease;
+            }
+            .video-frame .big-play:hover { transform: none; background: rgba(255, 255, 255, .18); }
+        }
+
+        @media (hover: none) and (pointer: coarse) and (max-width: 380px) {
+            .video-frame .player-controls { padding-left: 6px; padding-right: 6px; }
+            .video-frame .controls-row { gap: 2px; }
+            .video-frame .ctrl-btn { width: 34px; min-width: 34px; }
+            .video-frame .player-time { font-size: 9px; margin-left: 1px; }
+            .video-frame #speedSel { max-width: 52px; padding-left: 4px; padding-right: 4px; }
+            .video-frame #qualitySel { max-width: 58px; padding-left: 4px; padding-right: 4px; }
+        }
+
         .document-viewer { position: fixed; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(8, 15, 30, .78); backdrop-filter: blur(5px); }
         .document-viewer.open { display: flex; }
         .document-viewer-panel { display: flex; flex-direction: column; width: min(1100px, 100%); height: min(90vh, 900px); overflow: hidden; border-radius: 16px; background: var(--surface, #fff); box-shadow: 0 24px 80px rgba(0,0,0,.35); }
@@ -2577,6 +2623,7 @@
             frame.classList.add('show-controls');
             frame.classList.remove('hide-cursor');
             clearTimeout(hideTimer);
+            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
             if (!media.paused) hideTimer = setTimeout(() => { frame.classList.remove('show-controls'); frame.classList.add('hide-cursor'); }, 2600);
         }
         function toggleFullscreen() {

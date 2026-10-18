@@ -36,9 +36,9 @@ function getFirebaseAuth() {
 
 export { supabase };
 
-export const APP_URL = 'https://student-omega-fawn.vercel.app';
-const LOGIN_PAGE = `${APP_URL}/login.html`;
-const HOME_PAGE = `${APP_URL}/index.html`;
+const APP_URL = 'https://student-omega-fawn.vercel.app';
+const LOGIN_PAGE = 'login.html';
+const HOME_PAGE = 'index.html';
 
 /* ============ Session ============ */
 
@@ -82,7 +82,6 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
     email: cleanEmail,
     password,
     options: {
-      emailRedirectTo: LOGIN_PAGE,
       data: {
         full_name: name.trim(),
         roll_no: roll.trim(),
@@ -104,10 +103,7 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   try {
     const firebase = await getFirebaseAuth();
     const fbCred = await firebase.createUserWithEmailAndPassword(firebase.auth, cleanEmail, password);
-    await firebase.sendEmailVerification(fbCred.user, {
-      url: LOGIN_PAGE,
-      handleCodeInApp: false
-    });
+    await firebase.sendEmailVerification(fbCred.user);
     await firebase.signOut(firebase.auth);
   } catch (fbErr) {
     console.warn('Firebase mail warning:', fbErr.message);

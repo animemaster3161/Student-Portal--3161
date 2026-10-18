@@ -563,7 +563,7 @@
             <input type="checkbox" id="rememberMe">
             Remember this device
           </label>
-          <a href="https://student-omega-fawn.vercel.app/forgot_password.html" class="forgot-link">Forgot password?</a>
+          <a href="forgot_password.html" class="forgot-link">Forgot password?</a>
         </div>
 
         <div class="form-message" id="loginMessage"></div>
@@ -575,7 +575,7 @@
 
       <div class="switch-row">
         Don't have an account?
-        <a href="https://student-omega-fawn.vercel.app/signup.html" class="switch-link"
+        <a href="signup.html" class="switch-link"
           style="position: relative; z-index: 10; cursor: pointer;">Create an account</a>
       </div>
 
@@ -583,7 +583,7 @@
   </div>
 
   <script type="module">
-    import { APP_URL, signIn, redirectIfLoggedIn, setChatKeyRemembered } from './auth.js';
+    import { signIn, redirectIfLoggedIn, setChatKeyRemembered } from './auth.js';
 
     window.togglePassword = function (id, el) {
       const input = document.getElementById(id);
@@ -613,7 +613,7 @@
         const { user } = await signIn({ id, password });
         await setChatKeyRemembered(user.id, document.getElementById('rememberMe').checked);
         showMessage(loginMessage, 'Success! Redirecting to your dashboard...', 'success');
-        setTimeout(() => { window.location.href = `${APP_URL}/index.html`; }, 600);
+        setTimeout(() => { window.location.href = 'index.html'; }, 600);
       } catch (err) {
         showMessage(loginMessage, err.message || 'Login failed.', 'error');
         btn.disabled = false;

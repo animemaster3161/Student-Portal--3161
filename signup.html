@@ -574,7 +574,7 @@ html{overflow-x:hidden;max-width:100vw;}
         <div class="divider">OR</div>
 
         <div class="switch-row">
-          Already have an account? <a href="https://student-omega-fawn.vercel.app/login.html" class="switch-link">Sign in</a>
+          Already have an account? <a href="login.html" class="switch-link">Sign in</a>
         </div>
       </div>
 
@@ -582,7 +582,7 @@ html{overflow-x:hidden;max-width:100vw;}
   </div>
 
 <script type="module">
-  import { APP_URL, signUp, redirectIfLoggedIn } from './auth.js';
+  import { signUp, redirectIfLoggedIn } from './auth.js';
 
   window.togglePassword = function(id, el){
     const input = document.getElementById(id);
@@ -644,10 +644,10 @@ html{overflow-x:hidden;max-width:100vw;}
       const { needsEmailConfirm } = await signUp(data);
       if(needsEmailConfirm){
         showMessage(signupMessage, 'Account created. Confirm your email address, then sign in.', 'success');
-        setTimeout(() => { window.location.href = `${APP_URL}/login.html`; }, 2500);
+        setTimeout(() => { window.location.href = 'login.html'; }, 2500);
       }else{
         showMessage(signupMessage, 'Account created! Redirecting...', 'success');
-        setTimeout(() => { window.location.href = `${APP_URL}/index.html`; }, 900);
+        setTimeout(() => { window.location.href = 'index.html'; }, 900);
       }
     }catch(err){
       showMessage(signupMessage, err.message || 'Signup failed.', 'error');

@@ -340,6 +340,25 @@ html{overflow-x:hidden;max-width:100vw;}
     border:1px solid rgba(92,225,255,0.3);
     color:var(--cyan-soft);
   }
+  .btn-resend{
+    width:100%;
+    margin:0 0 14px;
+    padding:12px;
+    border:1px solid rgba(143,233,255,0.35);
+    border-radius:10px;
+    background:rgba(92,225,255,0.08);
+    color:var(--cyan-soft);
+    font:600 13px 'Inter',sans-serif;
+    cursor:pointer;
+  }
+  .btn-resend:hover{ background:rgba(92,225,255,0.14); }
+  .btn-resend:disabled{ opacity:.65; cursor:wait; }
+  .redirect-countdown{
+    margin:0 0 14px;
+    color:var(--ink-dim);
+    font-size:12px;
+    text-align:center;
+  }
   .btn-primary:disabled{
     opacity:0.6;
     cursor:not-allowed;
@@ -567,6 +586,8 @@ html{overflow-x:hidden;max-width:100vw;}
           </div>
 
           <div class="form-message" id="signupMessage"></div>
+          <button class="btn-resend" id="resendSignupEmailBtn" type="button" hidden>Resend verification email</button>
+          <p class="redirect-countdown" id="signupRedirectStatus" hidden></p>
 
           <button class="btn-primary" type="submit" style="margin-top:6px;">Create account</button>
         </form>
@@ -582,7 +603,7 @@ html{overflow-x:hidden;max-width:100vw;}
   </div>
 
 <script type="module">
-  import { signUp, redirectIfLoggedIn } from './auth.js';
+  import { signUp, redirectIfLoggedIn, resendVerificationEmail } from './auth.js';
 
   window.togglePassword = function(id, el){
     const input = document.getElementById(id);
@@ -597,12 +618,50 @@ html{overflow-x:hidden;max-width:100vw;}
 
   const signupForm = document.getElementById('signupForm');
   const signupMessage = document.getElementById('signupMessage');
+  const resendSignupEmailBtn = document.getElementById('resendSignupEmailBtn');
+  const signupRedirectStatus = document.getElementById('signupRedirectStatus');
   const btn = signupForm.querySelector('.btn-primary');
   const v = (id) => document.getElementById(id).value.trim();
   const passwordInput = document.getElementById('signupPassword');
   const keywordInput = document.getElementById('signupKeyword');
   const sameKeywordOption = document.getElementById('keywordSameAsPassword');
   let customKeyword = keywordInput.value;
+  let resendCredentials = null;
+  let loginCountdownTimer = null;
+
+  function scheduleLoginRedirect() {
+    let seconds = 60;
+    signupRedirectStatus.hidden = false;
+    signupRedirectStatus.textContent = `You can resend the email now. Redirecting to sign in in ${seconds} seconds.`;
+    loginCountdownTimer = setInterval(() => {
+      seconds -= 1;
+      if (seconds > 0) {
+        signupRedirectStatus.textContent = `You can resend the email now. Redirecting to sign in in ${seconds} seconds.`;
+      } else {
+        signupRedirectStatus.textContent = 'Opening the sign-in page…';
+        clearInterval(loginCountdownTimer);
+      }
+    }, 1000);
+    setTimeout(() => { window.location.replace('login.html'); }, 60000);
+  }
+
+  resendSignupEmailBtn.addEventListener('click', async () => {
+    if (!resendCredentials) return;
+    resendSignupEmailBtn.disabled = true;
+    const oldLabel = resendSignupEmailBtn.textContent;
+    resendSignupEmailBtn.textContent = 'Sending verification email…';
+    try {
+      const result = await resendVerificationEmail(resendCredentials);
+      showMessage(signupMessage, result.alreadyVerified
+        ? `This Firebase email is already verified (${result.email}).`
+        : `Firebase verification email resent to ${result.email}. Check Inbox and Spam/Junk.`, 'success');
+    } catch (error) {
+      showMessage(signupMessage, error.message || 'Unable to resend the Firebase verification email.', 'error');
+    } finally {
+      resendSignupEmailBtn.disabled = false;
+      resendSignupEmailBtn.textContent = oldLabel;
+    }
+  });
 
   passwordInput.addEventListener('input', () => {
     if (sameKeywordOption.checked) keywordInput.value = passwordInput.value;
@@ -643,13 +702,16 @@ html{overflow-x:hidden;max-width:100vw;}
     try{
       const { needsEmailConfirm, firebaseEmailSent, firebaseAlreadyVerified, firebaseEmailError } = await signUp(data);
       if(needsEmailConfirm){
+        resendCredentials = { id: data.email, password: data.password };
+        resendSignupEmailBtn.hidden = false;
+        btn.textContent = 'Account created';
         const emailStatus = firebaseEmailSent
           ? 'Firebase verification email sent. Check your Inbox and Spam/Junk.'
           : firebaseAlreadyVerified
             ? 'Your Firebase email is already verified.'
-            : `Firebase could not send the verification email. ${firebaseEmailError} You can retry it from the sign-in page.`;
+            : `Firebase could not send the verification email. ${firebaseEmailError} Retry it with the button below.`;
         showMessage(signupMessage, `Account created. ${emailStatus} ${firebaseEmailSent || firebaseAlreadyVerified ? 'Confirm any portal email link too, then sign in.' : ''}`, firebaseEmailSent || firebaseAlreadyVerified ? 'success' : 'error');
-        setTimeout(() => { window.location.href = 'login.html'; }, firebaseEmailSent || firebaseAlreadyVerified ? 3500 : 7000);
+        scheduleLoginRedirect();
       }else{
         showMessage(signupMessage, 'Account created! Redirecting...', 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 900);

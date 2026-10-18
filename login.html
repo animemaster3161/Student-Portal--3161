@@ -281,21 +281,6 @@
       text-decoration: underline;
     }
 
-    .resend-link {
-      display: block;
-      margin: 10px 0 0 auto;
-      padding: 0;
-      border: 0;
-      background: none;
-      color: var(--cyan-soft);
-      font: inherit;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .resend-link:hover { text-decoration: underline; }
-    .resend-link:disabled { opacity: .65; cursor: wait; }
-
     .btn-primary {
       width: 100%;
       padding: 14px;
@@ -580,8 +565,6 @@
           </label>
           <a href="forgot_password.html" class="forgot-link">Forgot password?</a>
         </div>
-        <button class="resend-link" id="resendVerificationBtn" type="button">Resend verification email</button>
-
         <div class="form-message" id="loginMessage"></div>
 
         <button class="btn-primary" type="submit">Sign in</button>
@@ -599,7 +582,7 @@
   </div>
 
   <script type="module">
-    import { signIn, redirectIfLoggedIn, setChatKeyRemembered, resendVerificationEmail } from './auth.js';
+    import { signIn, redirectIfLoggedIn, setChatKeyRemembered } from './auth.js';
 
     window.togglePassword = function (id, el) {
       const input = document.getElementById(id);
@@ -615,25 +598,6 @@
     const loginForm = document.getElementById('loginForm');
     const loginMessage = document.getElementById('loginMessage');
     const btn = loginForm.querySelector('.btn-primary');
-    const resendButton = document.getElementById('resendVerificationBtn');
-
-    resendButton.addEventListener('click', async () => {
-      clearMessage(loginMessage);
-      const id = document.getElementById('loginId').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      resendButton.disabled = true;
-      try {
-        const result = await resendVerificationEmail({ id, password });
-        showMessage(loginMessage, result.alreadyVerified
-          ? `This Firebase email is already verified (${result.email}). If sign-in still fails, use the password reset link.`
-          : `Verification email sent to ${result.email}. Check Inbox and Spam/Junk.`, 'success');
-      } catch (error) {
-        showMessage(loginMessage, error.message || 'Unable to resend verification email.', 'error');
-      } finally {
-        resendButton.disabled = false;
-      }
-    });
-
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearMessage(loginMessage);

@@ -167,7 +167,7 @@ function describeFirebaseEmailError(error) {
   if (code === 'auth/operation-not-allowed') {
     return 'Firebase Email/Password sign-in is disabled. Enable it in Firebase Authentication settings.';
   }
-  if (code === 'auth/unauthorized-continue-uri') {
+  if (code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
     return 'Firebase rejected the return URL. Add student-omega-fawn.vercel.app to Firebase Authorized domains.';
   }
   if (code === 'auth/too-many-requests') {

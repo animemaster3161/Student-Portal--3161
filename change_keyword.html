@@ -26,20 +26,21 @@
     <section class="card" aria-labelledby="pageTitle">
       <div class="eyebrow">Chat encryption</div>
       <h1 id="pageTitle">Change security keyword</h1>
-      <p class="tagline">Verify your portal password and enter your current keyword to keep access to your encrypted chats.</p>
+      <p class="tagline">To change your keyword and keep your existing chats, verify your portal password and provide your current security keyword.</p>
 
-      <div id="statusMessage" class="form-message show info" role="status" aria-live="polite">
-        Password verification alone cannot recover a forgotten keyword. Your current keyword is required to preserve your chat history.
+      <div id="historyNotice" class="form-message info" role="alert" aria-live="assertive">
+        Without your current security keyword, your portal password cannot recover the encryption key. Your old encrypted chats cannot be restored after a key reset.
       </div>
+      <div id="statusMessage" class="form-message" role="status" aria-live="polite"></div>
 
-      <form id="keywordForm" hidden>
+      <form id="keywordForm" hidden novalidate>
         <div class="field">
           <label for="accountPassword">Current account password</label>
           <input id="accountPassword" type="password" autocomplete="current-password" required>
         </div>
         <div class="field">
-          <label for="currentKeyword">Current security keyword</label>
-          <input id="currentKeyword" type="password" autocomplete="current-password" required>
+          <label for="currentKeyword">Current security keyword (required to keep existing chats)</label>
+          <input id="currentKeyword" type="password" autocomplete="current-password">
         </div>
         <div class="field">
           <label for="newKeyword">New security keyword</label>
@@ -63,6 +64,8 @@
     import { changeSecurityKeyword, getSession } from './auth.js';
 
     const status = document.getElementById('statusMessage');
+    const historyNotice = document.getElementById('historyNotice');
+    const currentKeywordInput = document.getElementById('currentKeyword');
     const form = document.getElementById('keywordForm');
     const button = document.getElementById('saveKeywordButton');
     const loginLink = document.getElementById('loginLink');
@@ -76,13 +79,16 @@
     let session = null;
     try { session = await getSession(); } catch { /* show sign-in link below */ }
     if (!session) {
-      showMessage('Sign in to your portal account first. Your current keyword is still required to keep existing chats.', 'error');
+      showMessage('Sign in to your portal account first. The current security keyword is required to keep existing chats.', 'error');
       loginLink.hidden = false;
       communityLink.hidden = true;
     } else {
-      status.classList.remove('show');
       form.hidden = false;
     }
+
+    currentKeywordInput.addEventListener('input', () => {
+      if (currentKeywordInput.value.trim()) historyNotice.classList.remove('show');
+    });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -90,6 +96,18 @@
       const currentKeyword = document.getElementById('currentKeyword').value;
       const newKeyword = document.getElementById('newKeyword').value;
       const confirmation = document.getElementById('confirmKeyword').value;
+
+      if (!currentKeyword.trim()) {
+        historyNotice.classList.add('show');
+        currentKeywordInput.focus();
+        return;
+      }
+      historyNotice.classList.remove('show');
+
+      if (!currentPassword) {
+        showMessage('Enter your current account password.', 'error');
+        return;
+      }
 
       if (newKeyword.trim().length < 6) {
         showMessage('New security keyword must contain at least 6 characters.', 'error');
@@ -105,6 +123,7 @@
       try {
         await changeSecurityKeyword({ currentPassword, currentKeyword, newKeyword });
         form.hidden = true;
+        historyNotice.classList.remove('show');
         communityLink.textContent = 'Return to chat';
         showMessage('Security keyword updated. Your existing encrypted chats are preserved. Use the new keyword on devices that need unlocking.', 'success');
       } catch (error) {

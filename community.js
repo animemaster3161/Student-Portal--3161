@@ -121,7 +121,7 @@ function mkConv(row, other, members = []) {
     status: row.status, requestedBy: row.requested_by, other,
     lastAt: row.last_message_at,
     clearedBefore: (iAmA ? row.cleared_before_a : row.cleared_before_b) || null,
-    messages: [], ids: new Set(),
+    messages: [], ids: new Set(), pendingUploads: [],
     oldestLive: null, liveExhausted: false,
     archiveFiles: null, archiveIdx: 0, archiveDone: false,
     loaded: false, loading: false, unread: 0, preview: null
@@ -131,7 +131,7 @@ function mkConv(row, other, members = []) {
 async function fetchProfiles(ids) {
   if (!ids.length) return new Map();
   const { data } = await supabase.from('profiles')
-    .select('id,full_name,roll_no,branch,year,public_key').in('id', ids);
+    .select('id,full_name,roll_no,branch,year,semester,bio,public_key').in('id', ids);
   return new Map((data || []).map((p) => [p.id, p]));
 }
 
@@ -298,9 +298,9 @@ async function decryptMsg(c, m) {
   try {
     m._p = await decryptPayload(await keyFor(c, m.group_key_version || 1), m);
   } catch (e) {
-    const why = e.message === 'NO_LOCAL_KEY' ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Chat locked (Unlock to continue)'
-      : e.message === 'NO_PEER_KEY' ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ The other userÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s encryption key is unavailable'
-      : 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Unable to decrypt this message';
+    const why = e.message === 'NO_LOCAL_KEY' ? 'Chat locked (unlock to continue)'
+      : e.message === 'NO_PEER_KEY' ? "The other user's encryption key is unavailable"
+      : 'Unable to decrypt this message';
     m._p = { t: 'unavailable', _err: true };
   }
   return m;
@@ -389,7 +389,28 @@ async function recordReceived(c, messages, readNow = false) {
   }
 }
 
-async function refreshOutgoingReceipts(c, redraw = true) {
+function updateReceiptTicksInDom(message) {
+  if (S.current !== message.conversation_id) return;
+  const rows = $('messagesArea').querySelectorAll('.msg-row[data-message-id]');
+  const row = [...rows].find((item) => item.dataset.messageId === message.id);
+  const ticks = row?.querySelector('.meta-line .receipt-ticks');
+  if (!ticks) return;
+
+  const status = message.receipt || 'sent';
+  ticks.className = 'receipt-ticks ' + (status === 'sent' ? 'tick-sent' : status === 'read' ? 'tick-read' : 'tick-delivered');
+  ticks.replaceChildren();
+  const checkCount = status === 'sent' ? 1 : 2;
+  for (let i = 0; i < checkCount; i++) {
+    const check = document.createElement('span');
+    check.className = 'receipt-check';
+    check.textContent = '\u2713';
+    ticks.appendChild(check);
+  }
+  ticks.title = status === 'read' ? 'Seen' : status === 'delivered' ? 'Delivered' : 'Sent';
+  ticks.setAttribute('aria-label', ticks.title);
+}
+
+async function refreshOutgoingReceipts(c) {
   if (!c || !S.me || document.visibilityState !== 'visible') return;
   const outgoing = c.messages.filter((m) => m.sender_id === S.me && !m.archived);
   const ids = outgoing.map((m) => m.id);
@@ -402,12 +423,13 @@ async function refreshOutgoingReceipts(c, redraw = true) {
     const status = receipt.read_at ? 'read' : 'delivered';
     if (status === 'read' || !statuses.has(receipt.message_id)) statuses.set(receipt.message_id, status);
   }
-  let changed = false;
   for (const m of outgoing) {
     const next = statuses.get(m.id) || 'sent';
-    if (m.receipt !== next) { m.receipt = next; changed = true; }
+    if (m.receipt !== next) {
+      m.receipt = next;
+      updateReceiptTicksInDom(m);
+    }
   }
-  if (changed && redraw && S.current === c.id) renderMessages(c, 'stay');
 }
 
 function onReceiptChange(payload) {
@@ -417,17 +439,21 @@ function onReceiptChange(payload) {
     const m = c.messages.find((item) => item.id === receipt.message_id);
     if (!m || m.sender_id !== S.me) continue;
     const status = receipt.read_at ? 'read' : 'delivered';
-    if (status === 'read' || m.receipt !== 'read') m.receipt = status;
-    if (S.current === c.id) renderMessages(c, 'stay');
+    if (status === 'read' || m.receipt !== 'read') {
+      m.receipt = status;
+      updateReceiptTicksInDom(m);
+    }
     break;
   }
 }
 
 function previewOf(m) {
+  const senderPrefix = m.sender_id === S.me ? 'You: ' : '';
   if (m.deleted_at || m._p?.t === 'deleted') return 'This message was deleted';
+  if (m._p?._err) return senderPrefix + 'Message unavailable on this device';
   const p = m._p || {};
-  const body = p.t === 'file' && p.file ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â½ ' + p.file.name : (p.text || '');
-  return (m.sender_id === S.me ? 'You: ' : '') + body;
+  const body = p.t === 'file' && p.file ? 'Attachment: ' + p.file.name : (p.text || '');
+  return senderPrefix + body;
 }
 
 /* ====================== load data ====================== */
@@ -558,8 +584,8 @@ async function loadOlder(c) {
 function snippetFor(c, isReq) {
   if (isReq) return 'Wants to connect with you';
   if (!S.priv) return '';
-  if (c.status === 'pending') return c.preview ? esc(c.preview) : 'Request sent ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· waiting';
-  return c.preview ? esc(c.preview) : 'Say hi ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹';
+  if (c.status === 'pending') return c.preview ? esc(c.preview) : 'Request sent - waiting';
+  return c.preview ? esc(c.preview) : 'Say hi';
 }
 
 function chatItemEl(c, isReq) {
@@ -628,6 +654,8 @@ const renderListsSoon = () => { clearTimeout(listTimer); listTimer = setTimeout(
 function applySearchFilter() {
   const q = $('searchInput').value.trim().toLowerCase();
   document.querySelectorAll('.chat-item').forEach((item) => {
+    // Filter only the chat title and member identifier; previews and message
+    // payload fields never participate in list search.
     const hay = ((item.dataset.name || '') + ' ' + (item.dataset.sub || '')).toLowerCase();
     item.style.display = (!q || hay.includes(q)) ? 'flex' : 'none';
   });
@@ -638,6 +666,8 @@ function renderChatWindow() {
   const c = cur();
   const hdrStatus = $('hdrStatus');
   $('hdrGroupLink').style.display = 'none';
+  $('viewProfileBtn').style.display = 'none';
+  $('profileMenuItem').style.display = 'none';
   $('inviteBtn').style.display = 'none';
   ensureLockBlock();
   $('lockBlock').style.display = 'none';
@@ -666,10 +696,10 @@ function renderChatWindow() {
   if (c.isGroup) {
     $('hdrGroupLink').style.display = 'inline';
     $('hdrGroupLink').textContent = 'Group info';
-  }
+  } else $('viewProfileBtn').style.display = 'inline-flex';
 
   if (c.isGroup) {
-    hdrStatus.textContent = `Group ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${c.members.length} members`;
+    hdrStatus.textContent = `Group - ${c.members.length} members`;
     hdrStatus.style.color = 'var(--ink-faint)';
   } else if (c.status === 'pending' && !incomingReq) {
     hdrStatus.innerHTML = '<span class="dot"></span> Request pending';
@@ -682,6 +712,7 @@ function renderChatWindow() {
 
   const bm = $('blockMenuItem');
   bm.style.display = c.isGroup ? 'none' : 'flex';
+  $('profileMenuItem').style.display = c.isGroup ? 'none' : 'flex';
   bm.innerHTML = blocked ? '<i class="fas fa-lock-open"></i> Unblock User' : '<i class="fas fa-ban"></i> Block User';
   const mm = document.querySelector('#moreMenu [data-action="mute"]');
   mm.innerHTML = muted.has(c.id)
@@ -709,6 +740,63 @@ function renderChatWindow() {
   }
 }
 
+let contactProfileRequest = 0;
+async function openContactProfile(c = cur()) {
+  if (!c || c.isGroup) return;
+  const requestId = ++contactProfileRequest;
+  const profileId = c.other.id;
+  const fallback = c.other || {};
+  $('contactProfileName').textContent = fallback.full_name || 'Student profile';
+  $('contactProfileAvatar').className = 'av ' + colorFor(profileId);
+  $('contactProfileAvatar').textContent = initialsOf(fallback.full_name);
+  $('contactProfileRoll').textContent = fallback.roll_no ? `Roll no. ${fallback.roll_no}` : 'Student';
+  $('contactProfileBranch').textContent = 'Loading...';
+  $('contactProfileYear').textContent = 'Loading...';
+  $('contactProfileSemester').textContent = 'Loading...';
+  $('contactProfileBio').textContent = 'Loading...';
+  $('contactProfileBioSection').style.display = 'block';
+  $('contactProfileModal').classList.add('show');
+
+  try {
+    const { data, error } = await supabase.from('profiles')
+      .select('id,full_name,roll_no,branch,year,semester,bio')
+      .eq('id', profileId).maybeSingle();
+    if (error) throw error;
+    if (requestId !== contactProfileRequest) return;
+    const profile = { ...fallback, ...(data || {}) };
+    c.other = { ...c.other, ...profile };
+    $('contactProfileName').textContent = profile.full_name || 'Student profile';
+    $('contactProfileAvatar').textContent = initialsOf(profile.full_name);
+    $('contactProfileRoll').textContent = profile.roll_no ? `Roll no. ${profile.roll_no}` : 'Roll number not shared';
+    $('contactProfileBranch').textContent = profile.branch || 'Not shared';
+    $('contactProfileYear').textContent = profile.year ? `Year ${profile.year}` : 'Not shared';
+    $('contactProfileSemester').textContent = profile.semester ? `Semester ${profile.semester}` : 'Not shared';
+    const bio = String(profile.bio || '').trim();
+    $('contactProfileBioSection').style.display = bio ? 'block' : 'none';
+    $('contactProfileBio').textContent = bio;
+  } catch (error) {
+    if (requestId !== contactProfileRequest) return;
+    $('contactProfileBranch').textContent = fallback.branch || 'Not shared';
+    $('contactProfileYear').textContent = fallback.year ? `Year ${fallback.year}` : 'Not shared';
+    $('contactProfileSemester').textContent = fallback.semester ? `Semester ${fallback.semester}` : 'Not shared';
+    const bio = String(fallback.bio || '').trim();
+    $('contactProfileBioSection').style.display = bio ? 'block' : 'none';
+    $('contactProfileBio').textContent = bio;
+    console.error('Contact profile load failed:', error.message);
+    toast('Some profile details could not be loaded.', 'fa-triangle-exclamation');
+  }
+}
+
+function closeAttachmentViewer(fromHistory = false) {
+  const overlay = $('attachmentViewer');
+  if (!overlay) return;
+  if (!fromHistory && history.state?.mgmAttachmentViewer) {
+    history.back();
+    return;
+  }
+  overlay.classList.remove('show');
+}
+
 function ensureAttachmentViewer() {
   let overlay = $('attachmentViewer');
   if (overlay) return overlay;
@@ -719,6 +807,9 @@ function ensureAttachmentViewer() {
   overlay.innerHTML = `
     <section class="attachment-viewer-panel" role="dialog" aria-modal="true" aria-label="Attachment preview">
       <div class="attachment-viewer-bar">
+        <button type="button" class="attachment-viewer-action attachment-viewer-close" id="attachmentViewerClose" aria-label="Back to chat">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back</span>
+        </button>
         <span class="attachment-viewer-name" id="attachmentViewerName"></span>
         <a class="attachment-viewer-action" id="attachmentOpenLink" target="_blank" rel="noopener">
           <i class="fas fa-arrow-up-right-from-square"></i><span>Open</span>
@@ -726,13 +817,12 @@ function ensureAttachmentViewer() {
         <a class="attachment-viewer-action" id="attachmentDownloadLink">
           <i class="fas fa-download"></i><span>Download / Save</span>
         </a>
-        <button class="attachment-viewer-action attachment-viewer-close" id="attachmentViewerClose" aria-label="Close">&times;</button>
       </div>
       <div class="attachment-viewer-body" id="attachmentViewerBody"></div>
     </section>`;
   document.body.appendChild(overlay);
 
-  const close = () => overlay.classList.remove('show');
+  const close = () => closeAttachmentViewer();
   $('attachmentViewerClose').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
@@ -769,7 +859,11 @@ async function openAttachment(file, cacheKey) {
       note.style.cssText = 'color:white;padding:20px;text-align:center';
       body.appendChild(note);
     }
-    overlay.classList.add('show');
+    if (!overlay.classList.contains('show')) {
+      const state = history.state && typeof history.state === 'object' ? history.state : {};
+      history.pushState({ ...state, mgmAttachmentViewer: true }, '');
+      overlay.classList.add('show');
+    }
   } catch (e) {
     console.error('Attachment preview failed:', e);
     toast('Unable to open the file. Please download it again.', 'fa-triangle-exclamation');
@@ -826,13 +920,18 @@ function msgRow(m) {
     senderName.textContent = mine ? 'You' : (sender?.full_name || 'Group member');
     bubble.appendChild(senderName);
   }
-  if (conversation?.isGroup && p.replyTo?.messageId) {
+  if (p.replyTo?.messageId) {
+    const quotedSender = p.replyTo.senderId === S.me
+      ? 'You'
+      : conversation?.isGroup
+        ? (conversation.members.find((member) => member.id === p.replyTo.senderId)?.full_name || p.replyTo.senderName || 'Group member')
+        : (conversation?.other.full_name || p.replyTo.senderName || 'Contact');
     const quote = document.createElement('button');
     quote.type = 'button';
     quote.className = 'reply-quote';
-    quote.setAttribute('aria-label', `Reply to ${p.replyTo.senderName || 'message'}: ${p.replyTo.excerpt || 'Message'}`);
+    quote.setAttribute('aria-label', `Reply to ${quotedSender}: ${p.replyTo.excerpt || 'Message'}`);
     const author = document.createElement('span'); author.className = 'reply-quote-author';
-    author.textContent = p.replyTo.senderName || 'Group member';
+    author.textContent = quotedSender;
     const excerpt = document.createElement('span'); excerpt.className = 'reply-quote-text';
     excerpt.textContent = p.replyTo.excerpt || 'Message';
     quote.append(author, excerpt);
@@ -857,7 +956,7 @@ function msgRow(m) {
     if (p.text) { const t = document.createElement('div'); appendTextWithLinks(t, p.text); bubble.appendChild(t); }
   }
 
-  if (!deleted && !p._err && (!m.archived || conversation?.isGroup)) {
+  if (!deleted && !p._err) {
     const reactions = m.reactions || [];
     if (!m.archived && reactions.length) {
       const counts = new Map();
@@ -926,16 +1025,14 @@ function msgRow(m) {
     moreBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenuOpen(!menu.classList.contains('show')); });
     actions.addEventListener('click', (e) => e.stopPropagation());
 
-    if (conversation?.isGroup) {
-      const replyBtn = document.createElement('button');
-      replyBtn.type = 'button'; replyBtn.className = 'message-menu-item';
-      replyBtn.innerHTML = '<i class="fas fa-reply"></i><span>Reply</span>';
-      replyBtn.addEventListener('click', () => {
-        setMenuOpen(false);
-        setReplyTarget(conversation, m);
-      });
-      menu.appendChild(replyBtn);
-    }
+    const replyBtn = document.createElement('button');
+    replyBtn.type = 'button'; replyBtn.className = 'message-menu-item';
+    replyBtn.innerHTML = '<i class="fas fa-reply"></i><span>Reply</span>';
+    replyBtn.addEventListener('click', () => {
+      setMenuOpen(false);
+      setReplyTarget(conversation, m);
+    });
+    menu.appendChild(replyBtn);
     let holdTimer = null;
     let holdTriggered = false;
     let lastTapAt = 0;
@@ -989,7 +1086,7 @@ function msgRow(m) {
     messageActions = actions;
   }
   const meta = document.createElement('div'); meta.className = 'meta-line';
-  meta.innerHTML = (m.edited_at && !deleted ? 'Edited ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' : '') + fmtTime(m.created_at);
+  meta.innerHTML = (m.edited_at && !deleted ? 'Edited - ' : '') + fmtTime(m.created_at);
   if (mine) {
     const status = m.receipt || 'sent';
     const ticks = document.createElement('span');
@@ -1106,10 +1203,82 @@ async function confirmDeleteMessage() {
   finally { $('messageDeleteConfirm').disabled = false; }
 }
 
+function pendingUploadRow(pending) {
+  const { file } = pending;
+  const row = document.createElement('div');
+  row.className = 'msg-row out pending-upload-row';
+  row.dataset.pendingUploadId = pending.id;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble pending-upload-bubble';
+
+  if (file.type.startsWith('image/')) {
+    const preview = document.createElement('div');
+    preview.className = 'pending-upload-preview';
+    const image = document.createElement('img');
+    image.className = 'pending-upload-image';
+    image.src = pending.previewUrl;
+    image.alt = file.name || 'Photo being sent';
+    const overlay = document.createElement('div');
+    overlay.className = 'pending-upload-overlay';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    const spinner = document.createElement('i');
+    spinner.className = 'fas fa-spinner pending-upload-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    const status = document.createElement('span');
+    status.textContent = pending.status;
+    overlay.append(spinner, status);
+    preview.append(image, overlay);
+    bubble.appendChild(preview);
+  } else {
+    const fileCard = document.createElement('div');
+    fileCard.className = 'pending-upload-file';
+    const icon = document.createElement('span');
+    icon.className = 'pending-upload-file-icon';
+    icon.innerHTML = `<i class="fas ${file.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file'}" aria-hidden="true"></i>`;
+    const copy = document.createElement('span');
+    copy.className = 'pending-upload-file-copy';
+    const name = document.createElement('span');
+    name.className = 'pending-upload-file-name';
+    name.textContent = file.name || 'Attachment';
+    const size = document.createElement('small');
+    size.textContent = formatSize(file.size || 0);
+    copy.append(name, size);
+    fileCard.append(icon, copy);
+    bubble.appendChild(fileCard);
+
+    const status = document.createElement('div');
+    status.className = 'pending-upload-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    const spinner = document.createElement('i');
+    spinner.className = 'fas fa-spinner pending-upload-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.textContent = pending.status;
+    status.append(spinner, label);
+    bubble.appendChild(status);
+  }
+
+  if (pending.caption) {
+    const caption = document.createElement('div');
+    caption.className = 'pending-upload-caption';
+    caption.textContent = pending.caption;
+    bubble.appendChild(caption);
+  }
+  wrap.appendChild(bubble);
+  row.appendChild(wrap);
+  return row;
+}
+
 // mode: 'bottom' (naya msg/open), 'prepend' (purane upar add hue), 'stay'
 function renderMessages(c, mode = 'bottom') {
   const area = $('messagesArea');
   const prevH = area.scrollHeight, prevTop = area.scrollTop;
+  const wasNearBottom = prevH - prevTop - area.clientHeight < 120;
   const frag = document.createDocumentFragment();
 
   if (c.loading && c.loaded) frag.appendChild(emptyNote('Loading messages…'));
@@ -1130,11 +1299,14 @@ function renderMessages(c, mode = 'bottom') {
     }
     frag.appendChild(msgRow(m));
   }
+  for (const pending of c.pendingUploads || []) frag.appendChild(pendingUploadRow(pending));
   area.replaceChildren(frag);
 
   if (mode === 'bottom') area.scrollTop = area.scrollHeight;
   else if (mode === 'prepend') area.scrollTop = area.scrollHeight - prevH + prevTop;
-  else area.scrollTop = prevTop;
+  else area.scrollTop = wasNearBottom
+    ? area.scrollHeight
+    : Math.min(prevTop, Math.max(0, area.scrollHeight - area.clientHeight));
 }
 
 // Agar messages kam hain aur scrollbar nahi bana, to scroll event nahi aayega: khud purane load karo
@@ -1191,8 +1363,7 @@ async function openConv(id) {
     toast('The notes link is ready. Review it before sending.', 'fa-link');
   }
   await recordReceived(c, c.messages, true);
-  // Refresh may update receipt state after the first render; redraw so the
-  // visible tick matches that state. renderMessages('stay') preserves scroll.
+  // Refresh receipt ticks in place so the message list and scroll position stay put.
   await refreshOutgoingReceipts(c);
   fillIfShort(c);
 }
@@ -1206,26 +1377,26 @@ function messageExcerpt(m) {
   if (payload.t === 'file') {
     const file = payload.file || {};
     const kind = (file.mime || '').startsWith('image/') ? 'Photo' : file.mime === 'application/pdf' ? 'PDF' : 'Attachment';
-    return file.name ? `${kind} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${file.name}` : kind;
+    return file.name ? `${kind}: ${file.name}` : kind;
   }
   return String(payload.text || 'Message').replace(/\s+/g, ' ').trim().slice(0, 140);
 }
 
 function replyDescriptorFor(c) {
   const target = S.replyTarget;
-  if (!c?.isGroup || target?.conversationId !== c.id) return null;
+  if (!c || target?.conversationId !== c.id) return null;
   return target.quote;
 }
 
 function setReplyTarget(c, m) {
-  if (!c?.isGroup || !m) return;
-  const sender = c.members.find((member) => member.id === m.sender_id);
+  if (!c || !m) return;
+  const sender = c.isGroup ? c.members.find((member) => member.id === m.sender_id) : c.other;
   S.replyTarget = {
     conversationId: c.id,
     quote: {
       messageId: m.id,
       senderId: m.sender_id,
-      senderName: m.sender_id === S.me ? 'You' : (sender?.full_name || 'Group member'),
+      senderName: m.sender_id === S.me ? 'You' : (sender?.full_name || (c.isGroup ? 'Group member' : 'Contact')),
       excerpt: messageExcerpt(m)
     }
   };
@@ -1245,7 +1416,7 @@ function renderReplyComposer(c = cur()) {
   const box = $('replyComposerPreview');
   if (!box) return;
   const target = S.replyTarget;
-  if (!S.priv || !c?.isGroup || target?.conversationId !== c.id) {
+  if (!S.priv || !c || target?.conversationId !== c.id) {
     box.style.display = 'none';
     return;
   }
@@ -1418,9 +1589,20 @@ async function sendAttachment(file, conversation = cur(), replyTo = undefined, c
     toast('Add your Cloudinary credentials to chat-config.js.', 'fa-triangle-exclamation'); return false;
   }
   const messageReply = replyTo === undefined ? replyDescriptorFor(c) : replyTo;
-  toast('Encrypting and uploadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦', 'fa-spinner');
+  const pending = {
+    id: `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+    caption,
+    status: 'Encrypting...'
+  };
+  c.pendingUploads ||= [];
+  c.pendingUploads.push(pending);
+  if (S.current === c.id) renderMessages(c, 'bottom');
   try {
     const enc = await encryptFile(file);
+    pending.status = 'Uploading...';
+    if (S.current === c.id) renderMessages(c, 'bottom');
     const url = await uploadToCloudinary(enc.blob);
     await sendPayload(c, {
       t: 'file', text: caption,
@@ -1430,6 +1612,11 @@ async function sendAttachment(file, conversation = cur(), replyTo = undefined, c
     toast(`${file.name} sent.`);
     return true;
   } catch (e) { toast(sendErrorMessage(e), 'fa-triangle-exclamation'); return false; }
+  finally {
+    c.pendingUploads = (c.pendingUploads || []).filter((item) => item.id !== pending.id);
+    URL.revokeObjectURL(pending.previewUrl);
+    if (S.current === c.id) renderMessages(c, 'bottom');
+  }
 }
 
 function renderAttachmentDraft() {
@@ -1620,7 +1807,8 @@ async function onNewMessage(m) {
   if (m.sender_id !== S.me) {
     if (S.current === c.id) {
       const area = $('messagesArea');
-      const nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 140;
+      const nearBottom = document.activeElement === $('msgInput')
+        || area.scrollHeight - area.scrollTop - area.clientHeight < 140;
       renderMessages(c, nearBottom ? 'bottom' : 'stay');
       await recordReceived(c, [m], nearBottom);
     } else {
@@ -1760,7 +1948,7 @@ async function searchPeople(raw) {
   list.innerHTML = data.map((p) => `
     <div class="friend-suggestion-item" data-id="${esc(p.id)}">
       <div class="av ${colorFor(p.id)}">${esc(initialsOf(p.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(p.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' | ' + esc(p.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-check"></i></div>
     </div>`).join('');
   list._results = new Map(data.map((p) => [p.id, p]));
@@ -1785,7 +1973,7 @@ function renderGroupSearchResults() {
   list.innerHTML = [...results.values()].map((p) => `
     <div class="friend-suggestion-item${selectedGroupMembers.has(p.id) ? ' selected' : ''}" data-group-id="${esc(p.id)}">
       <div class="av ${colorFor(p.id)}">${esc(initialsOf(p.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(p.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' | ' + esc(p.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-check"></i></div>
     </div>`).join('');
 }
@@ -1881,7 +2069,7 @@ function renderGroupMemberRows(c) {
     return `<div class="member-row">
       <div class="av ${colorFor(member.id)}">${esc(initialsOf(member.full_name))}</div>
       <div class="m-info"><strong>${esc(member.full_name || 'Unknown member')}${member.id === S.me ? ' (You)' : ''}</strong>
-        <span class="${isAdmin ? 'admin-tag' : ''}">${isAdmin ? 'Admin' : 'Member'}${member.roll_no ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(member.roll_no) : ''}</span></div>
+        <span class="${isAdmin ? 'admin-tag' : ''}">${isAdmin ? 'Admin' : 'Member'}${member.roll_no ? ' | ' + esc(member.roll_no) : ''}</span></div>
       ${controls}
     </div>`;
   }).join('');
@@ -1892,7 +2080,7 @@ function openGroupInfo(c = cur()) {
   if (!c?.isGroup) return;
   $('membersGroupTitle').textContent = c.groupName || 'Group info';
   const isAdmin = groupAdmin(c);
-  membersGroupHint.textContent = isAdmin ? 'Admin Â· manage members and group' : 'Group members and admin details';
+  membersGroupHint.textContent = isAdmin ? 'Admin - manage members and group' : 'Group members and admin details';
   $('groupMemberAddPanel').style.display = isAdmin ? 'block' : 'none';
   $('deleteGroupButton').style.display = isAdmin ? 'inline-flex' : 'none';
   $('groupDeleteNote').style.display = isAdmin ? 'block' : 'none';
@@ -2014,7 +2202,7 @@ async function searchGroupAddPeople(raw) {
   list.innerHTML = [...list._results.values()].map((profile) => `
     <div class="friend-suggestion-item" data-add-group-member="${esc(profile.id)}">
       <div class="av ${colorFor(profile.id)}">${esc(initialsOf(profile.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(profile.full_name)}</strong><span>${esc(profile.roll_no || '')}${profile.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(profile.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(profile.full_name)}</strong><span>${esc(profile.roll_no || '')}${profile.branch ? ' | ' + esc(profile.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-plus"></i></div>
     </div>`).join('');
 }
@@ -2132,7 +2320,7 @@ async function onGroupMembersChange(payload) {
       if ($('membersModal').classList.contains('show')) {
         $('groupMemberAddPanel').style.display = groupAdmin(c) ? 'block' : 'none';
         const isAdmin = groupAdmin(c);
-  membersGroupHint.textContent = isAdmin ? 'Admin Â· manage members and group' : 'Group members and admin details';
+  membersGroupHint.textContent = isAdmin ? 'Admin - manage members and group' : 'Group members and admin details';
         $('deleteGroupButton').style.display = isAdmin ? 'inline-flex' : 'none';
         $('groupDeleteNote').style.display = isAdmin ? 'block' : 'none';
         renderGroupMemberRows(c);
@@ -2166,27 +2354,40 @@ async function startChatWith(profile) {
 
 /* ====================== wiring ====================== */
 function wireUI() {
+  let viewportSyncFrame = 0;
   const syncVisualViewport = () => {
-    const viewport = window.visualViewport;
-    if (!viewport || !window.matchMedia('(max-width: 900px)').matches) return;
-    document.documentElement.style.setProperty('--visual-vh', `${viewport.height}px`);
-    document.documentElement.style.setProperty('--visual-top', `${viewport.offsetTop}px`);
+    if (viewportSyncFrame) return;
+    viewportSyncFrame = requestAnimationFrame(() => {
+      viewportSyncFrame = 0;
+      const viewport = window.visualViewport;
+      if (!viewport || !window.matchMedia('(max-width: 900px)').matches) return;
+      const root = document.documentElement;
+      const height = `${Math.round(viewport.height)}px`;
+      const top = `${Math.round(viewport.offsetTop)}px`;
+      if (root.style.getPropertyValue('--visual-vh') !== height) root.style.setProperty('--visual-vh', height);
+      if (root.style.getPropertyValue('--visual-top') !== top) root.style.setProperty('--visual-top', top);
+    });
   };
   syncVisualViewport();
   window.addEventListener('resize', syncVisualViewport, { passive: true });
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncVisualViewport, { passive: true });
-    window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
   }
   setInterval(() => {
     const c = cur();
     if (c?.loaded && document.visibilityState === 'visible') refreshOutgoingReceipts(c);
-  }, 8000);
+  }, 20000);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { markCurrentRead(); refreshOutgoingReceipts(cur()); }
   });
-  $('messagesArea').addEventListener('scroll', () => {
-    if (S.current) markCurrentRead();
+  const messagesArea = $('messagesArea');
+  messagesArea.addEventListener('scroll', () => {
+    const c = cur();
+    if (!c) return;
+    markCurrentRead();
+    // Keyboard/viewport adjustments while composing can move the scroll area;
+    // don't mistake that for a deliberate scroll to load older history.
+    if (document.activeElement !== $('msgInput') && messagesArea.scrollTop < 80) void loadOlder(c);
   }, { passive: true });
   // tabs
   document.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => {
@@ -2215,6 +2416,18 @@ function wireUI() {
     if (c?.isGroup) openConv(c.id);
   });
   $('hdrGroupLink').addEventListener('click', (e) => { e.preventDefault(); openGroupInfo(); });
+  $('viewProfileBtn').addEventListener('click', () => openContactProfile());
+  const closeContactProfile = () => {
+    contactProfileRequest++;
+    $('contactProfileModal').classList.remove('show');
+  };
+  $('closeContactProfile').addEventListener('click', closeContactProfile);
+  $('contactProfileModal').addEventListener('click', (event) => {
+    if (event.target === $('contactProfileModal')) closeContactProfile();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && $('contactProfileModal').classList.contains('show')) closeContactProfile();
+  });
   $('closeMembersModal').addEventListener('click', () => $('membersModal').classList.remove('show'));
   $('leaveGroupButton').addEventListener('click', () => leaveGroup());
   $('deleteGroupButton').addEventListener('click', () => deleteGroup());
@@ -2269,6 +2482,7 @@ function wireUI() {
       saveMuted(); renderChatWindow();
       toast(muted.has(c.id) ? 'Notifications muted' : 'Notifications unmuted');
     }
+    if (act === 'profile') openContactProfile(c);
     if (act === 'block') toggleBlock(c);
     if (act === 'report') reportChat(c);
     if (act === 'clear') clearChat(c);
@@ -2303,16 +2517,17 @@ function wireUI() {
   });
 
   // infinite scroll up -> live table, phir Cloudinary archive
-  $('messagesArea').addEventListener('scroll', () => {
-    const c = cur();
-    if (c && $('messagesArea').scrollTop < 80) loadOlder(c);
-  });
-
   // mobile back
   $('backToListBtn').addEventListener('click', () => {
     if (history.state && history.state.mgmChatOpen) history.back(); else closeMobilePane();
   });
-  window.addEventListener('popstate', closeMobilePane);
+  window.addEventListener('popstate', () => {
+    if ($('attachmentViewer')?.classList.contains('show')) {
+      closeAttachmentViewer(true);
+      return;
+    }
+    closeMobilePane();
+  });
 
   // search in list
   $('searchInput').addEventListener('input', applySearchFilter);

@@ -653,10 +653,10 @@ html{overflow-x:hidden;max-width:100vw;}
     try {
       const result = await resendVerificationEmail(resendCredentials);
       showMessage(signupMessage, result.alreadyVerified
-        ? `This Firebase email is already verified (${result.email}).`
-        : `Firebase verification email resent to ${result.email}. Check Inbox and Spam/Junk.`, 'success');
+        ? `This email address is already verified (${result.email}).`
+        : `Verification email resent to ${result.email}. Check your Inbox and Spam/Junk.`, 'success');
     } catch (error) {
-      showMessage(signupMessage, error.message || 'Unable to resend the Firebase verification email.', 'error');
+      showMessage(signupMessage, error.message || 'Unable to resend the verification email.', 'error');
     } finally {
       resendSignupEmailBtn.disabled = false;
       resendSignupEmailBtn.textContent = oldLabel;
@@ -700,17 +700,17 @@ html{overflow-x:hidden;max-width:100vw;}
     btn.disabled = true;
     showMessage(signupMessage, 'Creating account and generating your encryption keys...', 'success');
     try{
-      const { needsEmailConfirm, firebaseEmailSent, firebaseAlreadyVerified, firebaseEmailError } = await signUp(data);
+      const { needsEmailConfirm, emailVerificationSent, emailAlreadyVerified, emailVerificationError } = await signUp(data);
       if(needsEmailConfirm){
         resendCredentials = { id: data.email, password: data.password };
         resendSignupEmailBtn.hidden = false;
         btn.textContent = 'Account created';
-        const emailStatus = firebaseEmailSent
-          ? 'Firebase verification email sent. Check your Inbox and Spam/Junk.'
-          : firebaseAlreadyVerified
-            ? 'Your Firebase email is already verified.'
-            : `Firebase could not send the verification email. ${firebaseEmailError} Retry it with the button below.`;
-        showMessage(signupMessage, `Account created. ${emailStatus} ${firebaseEmailSent || firebaseAlreadyVerified ? 'Confirm any portal email link too, then sign in.' : ''}`, firebaseEmailSent || firebaseAlreadyVerified ? 'success' : 'error');
+        const emailStatus = emailVerificationSent
+          ? 'Verification email sent. Check your Inbox and Spam/Junk.'
+          : emailAlreadyVerified
+            ? 'Your email address is already verified.'
+            : `We could not send the verification email. ${emailVerificationError} Retry it with the button below.`;
+        showMessage(signupMessage, `Account created. ${emailStatus} ${emailVerificationSent || emailAlreadyVerified ? 'Confirm any portal email link too, then sign in.' : ''}`, emailVerificationSent || emailAlreadyVerified ? 'success' : 'error');
         scheduleLoginRedirect();
       }else{
         showMessage(signupMessage, 'Account created! Redirecting...', 'success');

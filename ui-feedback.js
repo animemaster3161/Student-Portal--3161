@@ -9,7 +9,7 @@
     .portal-dialog-actions{display:flex;justify-content:flex-end;gap:10px}.portal-dialog button{border:0;border-radius:10px;padding:10px 15px;font:600 14px/1.2 Inter,system-ui,sans-serif;cursor:pointer}
     .portal-dialog-cancel{background:#eef1f6;color:#25324a}.portal-dialog-ok{background:#315de8;color:#fff}.portal-dialog-ok.danger{background:#c33b47}
     @keyframes portal-toast-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-    @media(max-width:600px){.portal-toast-stack{top:auto;right:12px;bottom:16px;left:12px}.portal-toast{max-width:none}}
+    @media(max-width:600px){.portal-toast-stack{top:calc(70px + env(safe-area-inset-top));right:12px;bottom:auto;left:12px}.portal-toast{max-width:none}}
   `;
   document.head.append(style);
   const stack = document.createElement('div');

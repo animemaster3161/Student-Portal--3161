@@ -108,20 +108,20 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   // 3. Send Firebase verification. Reuse an existing unverified Firebase
   // account on retries instead of silently losing the email to
   // auth/email-already-in-use.
-  let firebaseEmailSent = false;
-  let firebaseAlreadyVerified = false;
-  let firebaseEmailError = '';
+  let emailVerificationSent = false;
+  let emailAlreadyVerified = false;
+  let emailVerificationError = '';
   try {
     const result = await sendFirebaseVerification(cleanEmail, password, { createIfMissing: true });
-    firebaseAlreadyVerified = result.alreadyVerified;
-    firebaseEmailSent = !result.alreadyVerified;
+    emailAlreadyVerified = result.alreadyVerified;
+    emailVerificationSent = !result.alreadyVerified;
   } catch (fbErr) {
-    firebaseEmailError = describeFirebaseEmailError(fbErr);
+    emailVerificationError = describeFirebaseEmailError(fbErr);
     console.error('Firebase verification email failed:', fbErr.code || fbErr.message, fbErr);
   }
 
   await supabase.auth.signOut();
-  return { needsEmailConfirm: true, firebaseEmailSent, firebaseAlreadyVerified, firebaseEmailError };
+  return { needsEmailConfirm: true, emailVerificationSent, emailAlreadyVerified, emailVerificationError };
 }
 
 /* ============ Sign in ============ */
@@ -165,21 +165,23 @@ export async function signIn({ id, password }) {
 function describeFirebaseEmailError(error) {
   const code = String(error?.code || '');
   if (code === 'auth/operation-not-allowed') {
-    return 'Firebase Email/Password sign-in is disabled. Enable it in Firebase Authentication settings.';
+    return 'Email/password sign-in is disabled in the authentication settings.';
   }
   if (code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
-    return 'Firebase rejected the return URL. Add student-omega-fawn.vercel.app to Firebase Authorized domains.';
+    return 'The verification return URL is not allowed. Add student-omega-fawn.vercel.app to the authentication provider’s authorized domains.';
   }
   if (code === 'auth/too-many-requests') {
-    return 'Firebase temporarily limited email requests. Wait a little and try again.';
+    return 'Email requests were temporarily limited. Wait a little and try again.';
   }
   if (code === 'auth/email-already-in-use') {
-    return 'A Firebase account already exists for this email, but its password did not match. Use the same password as your portal account or contact support.';
+    return 'An account already exists for this email, but its password did not match. Use the same password as your portal account or contact support.';
   }
   if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
-    return 'Firebase could not verify these credentials. Check the email and password, then try again.';
+    return 'We could not verify these credentials. Check the email and password, then try again.';
   }
-  return [code, error?.message].filter(Boolean).join(': ') || 'Firebase could not send the verification email.';
+  // Keep provider-specific diagnostics in the console only; signup UI stays
+  // provider-neutral and does not expose raw authentication error text.
+  return 'The verification service could not send the email. Please try again later.';
 }
 
 async function sendFirebaseVerification(email, password, { createIfMissing = false } = {}) {

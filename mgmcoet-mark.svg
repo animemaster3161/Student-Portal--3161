@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
+  <title id="title">MGMCOET student portal emblem</title>
+  <circle cx="60" cy="60" r="55" fill="#fff" stroke="#0b326b" stroke-width="6"/>
+
+  <!-- Graduation cap and tassel -->
+  <path d="M22 34 60 17l38 17-38 18L22 34Z" fill="#0b326b"/>
+  <path d="M34 41v12c0 5 12 10 26 10s26-5 26-10V41L60 53 34 41Z" fill="#123d7d"/>
+  <path d="M96 35v16" fill="none" stroke="#0b326b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="96" cy="54" r="3.5" fill="#0b326b"/>
+  <path d="m96 57-4 15h8l-4-15Z" fill="#0b326b"/>
+
+  <!-- Student profile card -->
+  <rect x="37" y="54" width="46" height="34" rx="4" fill="#fff" stroke="#0b326b" stroke-width="4"/>
+  <circle cx="60" cy="66" r="5" fill="#0b326b"/>
+  <path d="M49 80c1-7 5-10 11-10s10 3 11 10H49Z" fill="#0b326b"/>
+
+  <!-- Open book with the gold page accent from the supplied mark -->
+  <path d="M60 91C46 79 32 77 18 81l-6 7c17-4 32-1 48 9 16-10 31-13 48-9l-6-7c-14-4-28-2-42 10Z" fill="#0b326b"/>
+  <path d="M60 101C44 91 29 89 14 93l-5 7c17-5 33-2 51 7 18-9 34-12 51-7l-5-7c-15-4-30-2-46 8Z" fill="#f5a900"/>
+</svg>

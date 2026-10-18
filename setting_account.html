@@ -325,7 +325,34 @@ html{overflow-x:hidden;max-width:100vw;}
                     </div>
                     <div class="form-group">
                         <label class="form-label">Roll Number</label>
-                        <input type="text" class="form-input" id="setRoll" value="" disabled>
+                        <input type="text" class="form-input" id="setRoll" value="" maxlength="32" autocomplete="off" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="setYear">Year</label>
+                        <select class="form-input" id="setYear" required>
+                            <option value="">Select year</option>
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="setSemester">Semester</label>
+                        <select class="form-input" id="setSemester" required>
+                            <option value="">Select semester</option>
+                            <option value="1">Semester 1</option>
+                            <option value="2">Semester 2</option>
+                            <option value="3">Semester 3</option>
+                            <option value="4">Semester 4</option>
+                            <option value="5">Semester 5</option>
+                            <option value="6">Semester 6</option>
+                            <option value="7">Semester 7</option>
+                            <option value="8">Semester 8</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -792,10 +819,24 @@ html{overflow-x:hidden;max-width:100vw;}
       currentFullName = p.full_name || session.user.email || 'Student';
       $('setName').value = p.full_name || '';
       $('setRoll').value = p.roll_no || '';
+      $('setYear').value = p.year || '';
+      $('setSemester').value = p.semester == null ? '' : String(p.semester);
       $('setEmail').value = p.email || '';
       $('setPersonalEmail').value = p.personal_email || '';
       $('setBio').value = p.bio || '';
-      savedProfile = { full_name: $('setName').value, personal_email: $('setPersonalEmail').value, bio: $('setBio').value };
+      savedProfile = {
+        full_name: $('setName').value,
+        roll_no: $('setRoll').value,
+        year: $('setYear').value,
+        semester: $('setSemester').value,
+        personal_email: $('setPersonalEmail').value,
+        bio: $('setBio').value
+      };
+      const miniProfile = document.querySelector('.profile-mini .info');
+      if (miniProfile) {
+        miniProfile.querySelector('strong').textContent = currentFullName;
+        miniProfile.querySelector('span').textContent = p.roll_no || '';
+      }
       currentAvatarUrl = session.user.user_metadata?.avatar_url || '';
       renderAvatar(currentAvatarUrl);
     }catch(e){ portalToast('Unable to load profile: ' + e.message, 'error'); }
@@ -850,22 +891,48 @@ html{overflow-x:hidden;max-width:100vw;}
   });
 
   $('saveProfileBtn').addEventListener('click', async () => {
+    const button = $('saveProfileBtn');
     try{
-      const profile = { full_name: $('setName').value, bio: $('setBio').value, personal_email: $('setPersonalEmail').value };
+      const profile = {
+        full_name: $('setName').value,
+        roll_no: $('setRoll').value,
+        year: $('setYear').value,
+        semester: $('setSemester').value,
+        bio: $('setBio').value,
+        personal_email: $('setPersonalEmail').value
+      };
+      if (!profile.roll_no.trim()) { $('setRoll').focus(); throw new Error('Enter your roll number.'); }
+      if (!profile.year) { $('setYear').focus(); throw new Error('Select your current year.'); }
+      if (!profile.semester) { $('setSemester').focus(); throw new Error('Select your current semester.'); }
+      button.disabled = true;
       await saveProfile(profile);
       savedProfile = profile;
       currentFullName = $('setName').value.trim() || currentFullName;
+      const miniProfile = document.querySelector('.profile-mini .info');
+      if (miniProfile) {
+        miniProfile.querySelector('strong').textContent = currentFullName;
+        miniProfile.querySelector('span').textContent = profile.roll_no.trim();
+      }
       if (!currentAvatarUrl) renderAvatar('', currentFullName);
       portalToast('Profile saved.');
     }catch(e){ portalToast('Save failed: ' + e.message, 'error'); }
+    finally { button.disabled = false; }
   });
 
   $('cancelProfileBtn').addEventListener('click', () => {
     if (!savedProfile) return;
     $('setName').value = savedProfile.full_name;
+    $('setRoll').value = savedProfile.roll_no;
+    $('setYear').value = savedProfile.year;
+    $('setSemester').value = savedProfile.semester;
     $('setPersonalEmail').value = savedProfile.personal_email;
     $('setBio').value = savedProfile.bio;
     currentFullName = savedProfile.full_name || currentFullName;
+    const miniProfile = document.querySelector('.profile-mini .info');
+    if (miniProfile) {
+      miniProfile.querySelector('strong').textContent = currentFullName;
+      miniProfile.querySelector('span').textContent = savedProfile.roll_no || '';
+    }
     if (!currentAvatarUrl) renderAvatar('', currentFullName);
   });
 

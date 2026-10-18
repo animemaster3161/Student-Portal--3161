@@ -250,13 +250,48 @@ export async function loadProfile() {
   return data;
 }
 
-export async function saveProfile({ full_name, bio, personal_email }) {
+export async function saveProfile({ full_name, bio, personal_email, roll_no, year, semester }) {
   const session = await getSession();
+  if (!session) throw new Error('Please sign in again to update your profile.');
+
+  const cleanRoll = String(roll_no || '').trim();
+  const cleanYear = String(year || '').trim();
+  const cleanSemester = String(semester || '').trim();
+  if (!cleanRoll || cleanRoll.length > 32) throw new Error('Enter a valid roll number (up to 32 characters).');
+  if (!['1st Year', '2nd Year', '3rd Year', '4th Year'].includes(cleanYear)) {
+    throw new Error('Select a valid year.');
+  }
+  if (!/^[1-8]$/.test(cleanSemester)) throw new Error('Select a valid semester.');
+
   const { error } = await supabase
     .from('profiles')
-    .update({ full_name: full_name.trim(), bio: bio.trim(), personal_email: personal_email.trim() })
+    .update({
+      full_name: String(full_name || '').trim(),
+      bio: String(bio || '').trim(),
+      personal_email: String(personal_email || '').trim(),
+      roll_no: cleanRoll,
+      year: cleanYear,
+      semester: cleanSemester
+    })
     .eq('id', session.user.id);
-  if (error) throw error;
+  if (error) {
+    if (error.code === '23505') throw new Error('This roll number is already assigned to another account.');
+    throw error;
+  }
+
+  // Keep legacy pages (such as attendance) that still read student details
+  // from auth metadata in sync with the authoritative profiles row.
+  const { error: metadataError } = await supabase.auth.updateUser({
+    data: {
+      full_name: String(full_name || '').trim(),
+      roll_no: cleanRoll,
+      year: cleanYear,
+      semester: cleanSemester
+    }
+  });
+  if (metadataError) {
+    console.warn('Student profile saved, but auth metadata could not be synced:', metadataError.message);
+  }
 }
 
 export async function saveAvatarUrl(avatarUrl) {

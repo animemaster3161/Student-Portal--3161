@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#060a12">
+  <title>Change Security Keyword | MGMCOET Student Portal</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="password-recovery.css">
+</head>
+<body>
+  <div class="bg-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline preload="metadata"><source src="bg.mp4" type="video/mp4"></video>
+    <div class="bg-scrim"></div>
+  </div>
+
+  <div class="mgm-badge">
+    <div class="name">MGMCOET</div>
+    <div class="sub">Unofficial Student Portal</div>
+  </div>
+
+  <main class="stage">
+    <section class="card" aria-labelledby="pageTitle">
+      <div class="eyebrow">Chat encryption</div>
+      <h1 id="pageTitle">Change security keyword</h1>
+      <p class="tagline">Verify your portal password and enter your current keyword to keep access to your encrypted chats.</p>
+
+      <div id="statusMessage" class="form-message show info" role="status" aria-live="polite">
+        Password verification alone cannot recover a forgotten keyword. Your current keyword is required to preserve your chat history.
+      </div>
+
+      <form id="keywordForm" hidden>
+        <div class="field">
+          <label for="accountPassword">Current account password</label>
+          <input id="accountPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label for="currentKeyword">Current security keyword</label>
+          <input id="currentKeyword" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="field">
+          <label for="newKeyword">New security keyword</label>
+          <input id="newKeyword" type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <div class="field">
+          <label for="confirmKeyword">Confirm new security keyword</label>
+          <input id="confirmKeyword" type="password" autocomplete="new-password" minlength="6" required>
+        </div>
+        <button id="saveKeywordButton" class="btn-primary" type="submit">Update security keyword</button>
+      </form>
+
+      <nav class="page-links" aria-label="Account links">
+        <a id="loginLink" href="login.html" hidden>Sign in</a>
+        <a id="communityLink" href="community.html">Back to community</a>
+      </nav>
+    </section>
+  </main>
+
+  <script type="module">
+    import { changeSecurityKeyword, getSession } from './auth.js';
+
+    const status = document.getElementById('statusMessage');
+    const form = document.getElementById('keywordForm');
+    const button = document.getElementById('saveKeywordButton');
+    const loginLink = document.getElementById('loginLink');
+    const communityLink = document.getElementById('communityLink');
+
+    function showMessage(text, type) {
+      status.textContent = text;
+      status.className = `form-message show ${type}`;
+    }
+
+    let session = null;
+    try { session = await getSession(); } catch { /* show sign-in link below */ }
+    if (!session) {
+      showMessage('Sign in to your portal account first. Your current keyword is still required to keep existing chats.', 'error');
+      loginLink.hidden = false;
+      communityLink.hidden = true;
+    } else {
+      status.classList.remove('show');
+      form.hidden = false;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const currentPassword = document.getElementById('accountPassword').value;
+      const currentKeyword = document.getElementById('currentKeyword').value;
+      const newKeyword = document.getElementById('newKeyword').value;
+      const confirmation = document.getElementById('confirmKeyword').value;
+
+      if (newKeyword.trim().length < 6) {
+        showMessage('New security keyword must contain at least 6 characters.', 'error');
+        return;
+      }
+      if (newKeyword !== confirmation) {
+        showMessage('The new security keywords do not match.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Updating…';
+      try {
+        await changeSecurityKeyword({ currentPassword, currentKeyword, newKeyword });
+        form.hidden = true;
+        communityLink.textContent = 'Return to chat';
+        showMessage('Security keyword updated. Your existing encrypted chats are preserved. Use the new keyword on devices that need unlocking.', 'success');
+      } catch (error) {
+        const messages = {
+          WRONG_ACCOUNT_PASSWORD: 'The account password is incorrect.',
+          WRONG_KEYWORD: 'The current security keyword is incorrect.',
+          KEYWORD_TOO_SHORT: 'New security keyword must contain at least 6 characters.',
+          KEYWORD_UNCHANGED: 'Choose a different security keyword.',
+          NO_BACKUP: 'No encrypted key backup was found for this account.',
+          NOT_LOGGED_IN: 'Your session expired. Sign in and try again.',
+          INVALID_KEY_BACKUP: 'The encrypted key backup could not be read. No changes were made.'
+        };
+        showMessage(messages[error.message] || 'Unable to update the keyword. No changes were made. Please try again.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Update security keyword';
+      }
+    });
+  </script>
+</body>
+</html>

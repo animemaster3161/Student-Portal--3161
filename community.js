@@ -185,6 +185,8 @@ function ensureUnlockUI() {
         No encryption key was found on this device. Enter the Security Keyword you created during sign-up.
         Choose 'Remember this device' at sign-in to keep the key here and avoid future prompts. Each device needs its own first unlock.</p>
       <input type="password" class="modal-input" id="unlockInput" placeholder="Security Keyword" autocomplete="off">
+      <a href="change_keyword.html" style="display:block;text-align:center;margin-top:10px;color:var(--blue);font-size:12px;text-decoration:none">
+        Forgot keyword? Recovery options</a>
       <p id="unlockErr" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></p>
       <button class="req-btn btn-accept" id="unlockBtn" style="width:100%;justify-content:center;margin-top:14px">
         <i class="fas fa-unlock"></i> Unlock</button>

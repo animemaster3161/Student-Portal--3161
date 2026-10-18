@@ -128,6 +128,32 @@ export async function restoreIdentity(backup, keyword) {
   }
 }
 
+/** Re-encrypt an existing identity backup under a replacement keyword. */
+export async function rewrapIdentityBackup(backup, currentKeyword, newKeyword) {
+  let plain;
+  try {
+    const wrapKey = await deriveWrapKey(currentKeyword, unb64(backup.salt), backup.iterations);
+    plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: unb64(backup.iv) },
+      wrapKey,
+      unb64(backup.wrapped_key)
+    );
+  } catch {
+    throw new Error('WRONG_KEYWORD');
+  }
+
+  let privJwk;
+  try {
+    privJwk = JSON.parse(dec.decode(plain));
+    if (privJwk.kty !== 'EC' || privJwk.crv !== 'P-256' || !privJwk.d) throw new Error('Invalid private key');
+    await crypto.subtle.importKey('jwk', privJwk, CURVE, false, KEY_USAGES);
+  } catch {
+    throw new Error('INVALID_KEY_BACKUP');
+  }
+
+  return wrapPrivateJwk(privJwk, newKeyword);
+}
+
 /** Chat ke liye: apni private key + doosre ki public JWK -> AES-GCM session key. */
 export async function deriveSharedKey(myPrivateKey, theirPublicJwk) {
   const theirPub = await crypto.subtle.importKey('jwk', theirPublicJwk, CURVE, false, []);

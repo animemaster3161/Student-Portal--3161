@@ -2,6 +2,7 @@
 import { supabase } from './supabase-config.js';
 import {
   createIdentity, restoreIdentity,
+  rewrapIdentityBackup,
   getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys,
   isLocalKeyRemembered, setLocalKeyRemembered
 } from './e2ee.js';
@@ -176,6 +177,42 @@ export async function unlockWithKeyword(keyword) {
   else await wipeLocalKeys(user.id);
   try { await cleanupSignupMetadata(user); } catch { /* ignore */ }
   return key;
+}
+
+export async function changeSecurityKeyword({ currentPassword, currentKeyword, newKeyword }) {
+  if (!currentPassword || !currentKeyword?.trim() || !newKeyword?.trim()) {
+    throw new Error('MISSING_KEYWORD_FIELDS');
+  }
+  if (newKeyword.trim().length < 6) throw new Error('KEYWORD_TOO_SHORT');
+  if (currentKeyword.trim().toLowerCase().normalize('NFKC') === newKeyword.trim().toLowerCase().normalize('NFKC')) {
+    throw new Error('KEYWORD_UNCHANGED');
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session?.user?.email) throw new Error('NOT_LOGGED_IN');
+
+  const { error: passwordError } = await supabase.auth.signInWithPassword({
+    email: session.user.email,
+    password: currentPassword
+  });
+  if (passwordError) throw new Error('WRONG_ACCOUNT_PASSWORD');
+
+  const { data: backup, error: backupError } = await supabase
+    .from('key_backups').select('wrapped_key,salt,iv,iterations')
+    .eq('user_id', session.user.id).maybeSingle();
+  if (backupError) throw backupError;
+  if (!backup) throw new Error('NO_BACKUP');
+
+  const nextBackup = await rewrapIdentityBackup(backup, currentKeyword, newKeyword);
+  const { error: updateError } = await supabase.rpc('rotate_my_key_backup', {
+    p_expected_salt: backup.salt,
+    p_wrapped_key: nextBackup.wrapped_key,
+    p_salt: nextBackup.salt,
+    p_iv: nextBackup.iv,
+    p_iterations: nextBackup.iterations
+  });
+  if (updateError) throw updateError;
 }
 
 export async function setChatKeyRemembered(userId, remember) {

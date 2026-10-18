@@ -1,6 +1,7 @@
 // chat-crypto.js -- message + attachment encryption (AES-GCM)
 // Conversation key = ECDH(meri private key, uska public key) -> dono taraf same AES key.
 import { deriveSharedKey } from './e2ee.js';
+import { CLOUDINARY_CLOUD } from './chat-config.js';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -56,7 +57,13 @@ export async function encryptFile(file) {
 }
 
 export async function decryptFile({ url, key, iv, mime }) {
-  const res = await fetch(url);
+  let fileUrl;
+  try { fileUrl = new URL(String(url || '')); } catch { throw new Error('INVALID_FILE_URL'); }
+  if (fileUrl.protocol !== 'https:' || fileUrl.hostname !== 'res.cloudinary.com' ||
+      !fileUrl.pathname.startsWith(`/${CLOUDINARY_CLOUD}/`) || fileUrl.username || fileUrl.password) {
+    throw new Error('INVALID_FILE_URL');
+  }
+  const res = await fetch(fileUrl.href, { credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error' });
   if (!res.ok) throw new Error('FILE_FETCH_FAILED');
   const ct = await res.arrayBuffer();
   const fileKey = await crypto.subtle.importKey('raw', fromB64(key), 'AES-GCM', false, ['decrypt']);

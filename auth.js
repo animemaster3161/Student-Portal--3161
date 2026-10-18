@@ -1,14 +1,44 @@
-// auth.js -- Module A: Authentication & User Persistence
+// auth.js
 import { supabase } from './supabase-config.js';
 import {
   createIdentity, restoreIdentity,
-  getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys
+  getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys,
+  isLocalKeyRemembered, setLocalKeyRemembered
 } from './e2ee.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDT5PWeMm85EScNPaxU6QoE4VoISPAg4eQ",
+  authDomain: "mgm-coet-unoffical.firebaseapp.com",
+  projectId: "mgm-coet-unoffical",
+};
+
+// Firebase is only used for the optional email-verification check. Load it
+// only when that check runs, so a blocked Firebase CDN cannot prevent the
+// rest of the portal modules and their button handlers from starting.
+let firebaseAuthPromise;
+function getFirebaseAuth() {
+  if (!firebaseAuthPromise) {
+    firebaseAuthPromise = Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js")
+    ]).then(([appModule, authModule]) => {
+      const app = appModule.getApps().length
+        ? appModule.getApp()
+        : appModule.initializeApp(firebaseConfig, "authApp");
+      return { auth: authModule.getAuth(app), ...authModule };
+    }).catch(error => {
+      firebaseAuthPromise = null;
+      throw error;
+    });
+  }
+  return firebaseAuthPromise;
+}
 
 export { supabase };
 
-const LOGIN_PAGE = 'login.html';
-const HOME_PAGE  = 'index.html';
+export const APP_URL = 'https://student-omega-fawn.vercel.app';
+const LOGIN_PAGE = `${APP_URL}/login.html`;
+const HOME_PAGE = `${APP_URL}/index.html`;
 
 /* ============ Session ============ */
 
@@ -17,25 +47,21 @@ export async function getSession() {
   return data.session;
 }
 
-/** Protected pages (index.html + iframe pages) me sabse upar call karo. */
 export async function requireAuth() {
   const session = await getSession();
   if (!session) { goToLogin(); return null; }
 
-  // Kisi bhi tab/device se sign-out ho to yahan bhi bahar
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') goToLogin();
   });
   return session;
 }
 
-/** login.html / signup.html par: pehle se logged-in ho to seedha portal. */
 export async function redirectIfLoggedIn() {
   if (await getSession()) window.location.replace(HOME_PAGE);
 }
 
 function goToLogin() {
-  // iframe ke andar ho to poora window login par le jao
   (window.top || window).location.replace(LOGIN_PAGE);
 }
 
@@ -43,36 +69,52 @@ function goToLogin() {
 
 export async function signUp({ name, email, password, keyword, roll, branch, year, semester }) {
   if (!keyword || keyword.trim().length < 6) {
-    throw new Error('Security keyword kam se kam 6 characters ka rakho.');
+    throw new Error('The security keyword must contain at least 6 characters.');
   }
 
-  // Keys signup par hi ban jaati hain, kyunki keyword abhi hamare paas hai
+  const cleanEmail = email.trim().toLowerCase();
+
+  // 1. E2EE Keys generate karo
   const identity = await createIdentity(keyword);
 
+  // 2. Supabase mein user profile, roll number aur keys save karo
   const { data, error } = await supabase.auth.signUp({
-    email: email.trim().toLowerCase(),
+    email: cleanEmail,
     password,
     options: {
+      emailRedirectTo: LOGIN_PAGE,
       data: {
         full_name: name.trim(),
         roll_no: roll.trim(),
         branch, year, semester,
-        public_key: identity.publicJwk,   // DB trigger isse profiles me daalta hai
-        key_backup: identity.backup       // DB trigger isse key_backups me daalta hai (encrypted)
+        public_key: identity.publicJwk,
+        key_backup: identity.backup
       }
     }
   });
   if (error) throw error;
 
-  // Email pehle se registered ho to Supabase error nahi deta, identities khaali aati hai
   if (data.user && data.user.identities?.length === 0) {
-    throw new Error('Ye email pehle se registered hai.');
+    throw new Error('This email address is already registered.');
   }
 
   if (data.user) await saveLocalPrivateKey(data.user.id, identity.privateKey);
 
-  // session null => email confirmation ON hai
-  return { needsEmailConfirm: !data.session };
+  // 3. Firebase ke through user ke Inbox mein 100% verified mail bhejo
+  try {
+    const firebase = await getFirebaseAuth();
+    const fbCred = await firebase.createUserWithEmailAndPassword(firebase.auth, cleanEmail, password);
+    await firebase.sendEmailVerification(fbCred.user, {
+      url: LOGIN_PAGE,
+      handleCodeInApp: false
+    });
+    await firebase.signOut(firebase.auth);
+  } catch (fbErr) {
+    console.warn('Firebase mail warning:', fbErr.message);
+  }
+
+  await supabase.auth.signOut();
+  return { needsEmailConfirm: true };
 }
 
 /* ============ Sign in ============ */
@@ -85,12 +127,25 @@ async function resolveEmail(idOrEmail) {
   return data;
 }
 
-/**
- * Login ab kabhi Security Keyword nahi maangta.
- * Is browser me key ho to chat seedha khulti hai; nahi ho to chat ke andar "Unlock" box aata hai.
- */
 export async function signIn({ id, password }) {
   const email = await resolveEmail(id);
+
+  // 1. Firebase se check karo ki user ne email verify kiya hai ya nahi
+  try {
+    const firebase = await getFirebaseAuth();
+    const fbCred = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
+    if (!fbCred.user.emailVerified) {
+      await firebase.signOut(firebase.auth);
+      throw new Error('EMAIL_NOT_VERIFIED');
+    }
+    await firebase.signOut(firebase.auth);
+  } catch (fbErr) {
+    if (fbErr.message === 'EMAIL_NOT_VERIFIED') {
+      throw new Error('Please verify your email address first! Check your inbox for the verification link.');
+    }
+  }
+
+  // 2. Supabase regular sign in
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error('Invalid roll number/email or password.');
 
@@ -99,16 +154,12 @@ export async function signIn({ id, password }) {
   return { user: data.user, e2eeReady };
 }
 
-/* ============ E2EE unlock (chat ke andar se) ============ */
+/* ============ E2EE unlock ============ */
 
 export async function hasLocalKey(userId) {
   try { return !!(await getLocalPrivateKey(userId)); } catch { return false; }
 }
 
-/**
- * Security Keyword se server backup khol kar private key is browser me save karta hai.
- * Galat keyword par Error('WRONG_KEYWORD'), backup na mile to Error('NO_BACKUP').
- */
 export async function unlockWithKeyword(keyword) {
   const session = await getSession();
   if (!session) throw new Error('NOT_LOGGED_IN');
@@ -119,13 +170,17 @@ export async function unlockWithKeyword(keyword) {
   if (error) throw error;
   if (!backup) throw new Error('NO_BACKUP');
 
-  const key = await restoreIdentity(backup, keyword);   // galat keyword -> WRONG_KEYWORD
-  await saveLocalPrivateKey(user.id, key);
+  const key = await restoreIdentity(backup, keyword);
+  if (isLocalKeyRemembered(user.id)) await saveLocalPrivateKey(user.id, key);
+  else await wipeLocalKeys(user.id);
   try { await cleanupSignupMetadata(user); } catch { /* ignore */ }
   return key;
 }
 
-// Signup ke time metadata me rakha encrypted backup ab DB me hai, auth metadata se hata do
+export async function setChatKeyRemembered(userId, remember) {
+  await setLocalKeyRemembered(userId, remember);
+}
+
 async function cleanupSignupMetadata(user) {
   if (user.user_metadata?.key_backup) {
     await supabase.auth.updateUser({ data: { key_backup: null, public_key: null } });
@@ -134,21 +189,19 @@ async function cleanupSignupMetadata(user) {
 
 /* ============ Sign out ============ */
 
-/** wipeKeys=true: shared/public computer par private key bhi browser se hata do. */
 export async function signOut({ wipeKeys = false } = {}) {
   const session = await getSession();
   if (wipeKeys && session) await wipeLocalKeys(session.user.id);
-  await supabase.auth.signOut();               // sirf ye device
+  await supabase.auth.signOut();
   goToLogin();
 }
 
-/** Settings -> "Force Logout Everywhere" */
 export async function signOutEverywhere() {
   await supabase.auth.signOut({ scope: 'global' });
   goToLogin();
 }
 
-/* ============ Profile (setting_account.html) ============ */
+/* ============ Profile ============ */
 
 export async function loadProfile() {
   const session = await getSession();
@@ -168,18 +221,43 @@ export async function saveProfile({ full_name, bio, personal_email }) {
   if (error) throw error;
 }
 
+export async function saveAvatarUrl(avatarUrl) {
+  const { error } = await supabase.auth.updateUser({
+    data: { avatar_url: avatarUrl || null }
+  });
+  if (error) throw error;
+}
+
 /* ============ Password ============ */
 
 export async function changePassword(currentPassword, newPassword) {
-  if (newPassword.length < 6) throw new Error('Naya password kam se kam 6 characters ka ho.');
+  if (newPassword.length < 6) throw new Error('The new password must contain at least 6 characters.');
   const session = await getSession();
+  const email = session.user.email;
 
-  // Current password verify karo
   const { error: reauthErr } = await supabase.auth.signInWithPassword({
-    email: session.user.email, password: currentPassword
+    email, password: currentPassword
   });
-  if (reauthErr) throw new Error('Current password galat hai.');
+  if (reauthErr) throw new Error('The current password is incorrect.');
 
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
+
+  // Firebase me sync karo agar exist karta hai
+  try {
+    const firebase = await getFirebaseAuth();
+    const fbCred = await firebase.signInWithEmailAndPassword(firebase.auth, email, currentPassword);
+    await firebase.updatePassword(fbCred.user, newPassword);
+    await firebase.signOut(firebase.auth);
+  } catch (e) { /* ignore */ }
+}
+
+/* ============ Forgot Password ============ */
+
+export async function resetPasswordRequest(idOrEmail) {
+  const email = await resolveEmail(idOrEmail);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${APP_URL}/reset_password.html`,
+  });
+  if (error) throw new Error('Unable to send reset link. Try again.');
 }

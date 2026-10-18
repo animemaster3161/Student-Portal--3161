@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Student Portal | Community</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -205,12 +206,35 @@ html{overflow-x:hidden;max-width:100vw;}
         display: flex;
         flex-direction: column;
         background: var(--surface-alt);
+        position: relative;
     }
 
     .pane-header { padding: 22px 22px 14px; }
     .pane-header h2 { font-family: 'Sora', sans-serif; font-size: 19px; font-weight: 700; color: var(--ink); display: flex; align-items: center; justify-content: space-between; }
     .pane-header h2 i { font-size: 14px; color: var(--blue); background: var(--blue-wash); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .2s var(--ease); }
     .pane-header h2 i:hover { background: var(--blue-light); color: #fff; }
+
+    .mobile-create-fab {
+        position: absolute; right: 18px; bottom: 18px; z-index: 40; display: grid; place-items: center;
+        width: 60px; height: 60px; border: 0; border-radius: 19px;
+        background: #19bd68; color: #062a1a; font-size: 24px; cursor: pointer;
+        box-shadow: 0 10px 28px rgba(15, 158, 83, .35); transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .mobile-create-fab:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(15, 158, 83, .4); }
+    .mobile-create-fab i { transition: transform .2s ease; }
+    .mobile-create-fab[aria-expanded="true"] i { transform: rotate(45deg); }
+    .mobile-create-actions {
+        position: absolute; right: 18px; bottom: 90px; z-index: 40; display: none;
+        flex-direction: column; align-items: flex-end; gap: 10px;
+    }
+    .mobile-create-actions.show { display: flex; }
+    .mobile-create-action {
+        min-height: 48px; display: inline-flex; align-items: center; gap: 11px; padding: 0 16px;
+        border: 1px solid var(--border); border-radius: 15px; background: var(--surface); color: var(--ink);
+        font: 600 13px 'Inter', sans-serif; white-space: nowrap; cursor: pointer;
+        box-shadow: 0 10px 28px rgba(10, 25, 50, .2); animation: contextPop .16s ease-out;
+    }
+    .mobile-create-action i { width: 18px; color: var(--success); text-align: center; }
 
     .search-bar { position: relative; margin: 14px 22px 0; }
     .search-bar i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 13px; }
@@ -232,7 +256,7 @@ html{overflow-x:hidden;max-width:100vw;}
     .tab-btn.active { background: linear-gradient(120deg, var(--blue-light), var(--blue)); color: #fff; box-shadow: 0 6px 14px rgba(46,92,230,0.3); }
     .tab-btn .req-count { margin-left: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
 
-    .chat-items { flex: 1; overflow-y: auto; padding: 8px 14px 20px; }
+    .chat-items { flex: 1; overflow-y: auto; padding: 8px 14px 96px; }
     .chat-items::-webkit-scrollbar { width: 5px; }
     .chat-items::-webkit-scrollbar-thumb { background: rgba(15,27,51,0.12); border-radius: 10px; }
 
@@ -385,6 +409,10 @@ html{overflow-x:hidden;max-width:100vw;}
     .bubble .meta-line .receipt-check { display: inline-block; font: 700 13px/1 Arial, sans-serif; }
     .deleted-bubble { opacity:.82; }
     .deleted-message { font-style:italic; opacity:.8; }
+    .message-unavailable { display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:12px; }
+    .message-unavailable i { color:var(--ink-faint); font-size:12px; }
+    .msg-row.out .message-unavailable { color:rgba(255,255,255,.9); }
+    .msg-row.out .message-unavailable i { color:rgba(255,255,255,.75); }
     .message-actions { position:relative; z-index:30; flex:0 0 30px; margin-top:4px; opacity:0; pointer-events:none; transition:opacity .14s ease, transform .14s ease; transform:translateY(3px); }
     .msg-row:hover .message-actions, .msg-row:focus-within .message-actions, .msg-row.context-open .message-actions { opacity:1; pointer-events:auto; transform:translateY(0); }
     .message-menu-trigger { width:30px; height:29px; border:1px solid rgba(18,36,62,.12); border-radius:10px; background:#fff; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; box-shadow:0 5px 18px rgba(20,35,60,.16); }
@@ -394,7 +422,7 @@ html{overflow-x:hidden;max-width:100vw;}
     .message-action-popover.show { display:block; animation:contextPop .14s ease-out; }
     @keyframes contextPop { from { opacity:0; transform:translateY(-4px) scale(.98); } to { opacity:1; transform:translateY(0) scale(1); } }
     .reaction-picker { display:flex; justify-content:space-between; gap:1px; padding:2px 0 8px; margin-bottom:5px; border-bottom:1px solid rgba(18,36,62,.09); }
-    .reaction-picker button { border:0; background:transparent; border-radius:9px; width:28px; height:32px; font-size:18px; cursor:pointer; transition:background .12s, transform .12s; }
+    .reaction-picker button { border:0; background:transparent; border-radius:9px; width:28px; height:32px; color:var(--ink); font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; font-size:20px; line-height:1; cursor:pointer; transition:background .12s, transform .12s; }
     .reaction-picker button:hover, .reaction-picker button:focus-visible { background:var(--surface-alt); transform:scale(1.16); outline:none; }
     .message-menu-item { width:100%; display:flex; align-items:center; gap:9px; padding:9px 8px; border:0; border-radius:8px; background:transparent; color:var(--ink); text-align:left; font:500 12.5px 'Inter',sans-serif; cursor:pointer; }
     .message-menu-item:hover { background:var(--surface-alt); }
@@ -688,12 +716,17 @@ html{overflow-x:hidden;max-width:100vw;}
 
         .back-to-list-btn { display: flex; }
 
-        .pane-header { padding: 18px 16px 10px; }
+        /* Keep the page title clear of the portal shell's floating menu button. */
+        .pane-header { padding: 18px 16px 10px 76px; }
         .search-bar { margin: 12px 16px 0; }
         .tabs { margin: 14px 16px 4px; }
-        .chat-items { padding: 8px 10px 20px; }
+        .chat-items { padding: 8px 10px calc(96px + env(safe-area-inset-bottom)); }
 
-        .chat-header { padding: 14px 16px; }
+        .chat-header { padding: 14px 16px 14px 72px; }
+        .chat-header-left { min-width: 0; gap: 8px; }
+        .chat-header-info { min-width: 0; }
+        .chat-header-info .name { display: block; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .header-actions { flex-shrink: 0; }
         .disappear-badge span { display: none; }
         .messages-area { padding: 16px; }
         .input-area { flex-shrink: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
@@ -702,6 +735,10 @@ html{overflow-x:hidden;max-width:100vw;}
         .attachment-draft-thumb,.attachment-draft-file-icon { width:60px; height:50px; }
         .reply-composer-preview { padding:8px 16px; }
         .msg-input { min-width: 0; font-size: 16px; }
+        .mobile-create-fab { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom)); }
+        .mobile-create-actions { position: fixed; right: 18px; bottom: calc(90px + env(safe-area-inset-bottom)); }
+        .chat-app.mobile-chat-open .mobile-create-fab,
+        .chat-app.mobile-chat-open .mobile-create-actions { display: none; }
     }
 
     .empty-note { text-align:center; color: var(--ink-faint); font-size: 12.5px; padding: 18px 14px; line-height: 1.5; }
@@ -716,7 +753,7 @@ html{overflow-x:hidden;max-width:100vw;}
     <!-- SIDEBAR -->
     <nav class="sidebar">
         <div class="logo">
-            <div class="logo-mark">MG</div>
+            <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
             <div class="logo-text">MGMCOET<span>Student Portal</span></div>
         </div>
 
@@ -771,6 +808,14 @@ html{overflow-x:hidden;max-width:100vw;}
 
                 <!-- REQUESTS TAB -->
                 <div class="chat-items" id="tab-requests" style="display:none;"></div>
+
+                <div class="mobile-create-actions" id="mobileCreateActions" aria-hidden="true">
+                    <button class="mobile-create-action" type="button" data-mobile-create="chat"><i class="fas fa-comment-dots"></i> New chat</button>
+                    <button class="mobile-create-action" type="button" data-mobile-create="group"><i class="fas fa-users"></i> New group</button>
+                </div>
+                <button class="mobile-create-fab" id="mobileCreateFab" type="button" aria-label="Create new chat or group" aria-expanded="false">
+                    <i class="fas fa-plus"></i>
+                </button>
             </div>
 
             <!-- RIGHT PANE -->
@@ -851,14 +896,14 @@ html{overflow-x:hidden;max-width:100vw;}
                 <label class="field-label" for="groupMemberSearchInput">Add member</label>
                 <div class="search-bar" style="margin:0 0 8px;">
                     <i class="fas fa-magnifying-glass"></i>
-                    <input type="text" id="groupMemberSearchInput" placeholder="Name ya roll number search karo...">
+                    <input type="text" id="groupMemberSearchInput" placeholder="Search by name or roll number...">
                 </div>
-                <div class="friend-suggestions" id="groupMemberSearchResults"><div class="empty-note">Naam ya roll number ke 2+ letters type karein.</div></div>
+                <div class="friend-suggestions" id="groupMemberSearchResults"><div class="empty-note">Enter at least two letters of a name or roll number.</div></div>
             </section>
             <div class="group-members-heading">Members <span id="groupMemberCount"></span></div>
             <div class="group-members-list" id="groupMemberRows"></div>
             <section class="group-info-actions" aria-label="Group actions">
-                <p>Leave karne par naye messages nahi milenge. Last admin leave kare to oldest member admin banega.</p>
+                <p>You will no longer receive new messages after leaving. If the last admin leaves, the oldest member becomes the admin.</p>
                 <div>
                     <button class="group-info-action-btn" id="leaveGroupButton" type="button"><i class="fas fa-right-from-bracket"></i> Leave group</button>
                     <button class="group-info-action-btn danger" id="deleteGroupButton" type="button" style="display:none;"><i class="fas fa-trash-can"></i> Delete group</button>
@@ -895,7 +940,7 @@ html{overflow-x:hidden;max-width:100vw;}
                     <input type="text" id="groupSearchInput" placeholder="Search name or roll number...">
                 </div>
                 <div class="selected-chips" id="groupSelectedChips"></div>
-                <div class="friend-suggestions" id="groupFriendList"><div class="empty-note">Members search karne ke liye naam likho.</div></div>
+                <div class="friend-suggestions" id="groupFriendList"><div class="empty-note">Enter a name to search for members.</div></div>
                 <button class="btn-create-group" id="createGroupSubmit" type="button"><i class="fas fa-users"></i> Create encrypted group</button>
             </div>
         </div>
@@ -913,18 +958,19 @@ html{overflow-x:hidden;max-width:100vw;}
     </div>
     <div class="modal-overlay" id="messageDeleteModal" style="z-index:1100;">
         <div class="modal-box message-edit-box">
-            <h3><span>Delete for everyone?</span><i class="fas fa-xmark" id="messageDeleteClose" role="button" aria-label="Close"></i></h3>
+            <h3><span>Unsend message?</span><i class="fas fa-xmark" id="messageDeleteClose" role="button" aria-label="Close"></i></h3>
             <p class="message-delete-copy">This message will be replaced with “This message was deleted” for everyone in this chat.</p>
             <div class="message-edit-actions">
                 <button type="button" class="message-edit-cancel" id="messageDeleteCancel">Cancel</button>
-                <button type="button" class="message-edit-save message-delete-confirm" id="messageDeleteConfirm">Delete for everyone</button>
+                <button type="button" class="message-edit-save message-delete-confirm" id="messageDeleteConfirm">Unsend message</button>
             </div>
         </div>
     </div>
 
     <div class="toast-msg" id="toastMsg"><i class="fas fa-circle-check"></i> <span id="toastText">Done</span></div>
 
-<script type="module" src="community.js?v=elibrary-share-20261015"></script>
+<script src="ui-feedback.js"></script>
+<script type="module" src="community.js?v=20261018-message-actions"></script>
 
 </body>
 </html>

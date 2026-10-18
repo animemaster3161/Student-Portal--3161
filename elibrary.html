@@ -6,6 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>E-Library | Student Portal</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
@@ -880,7 +881,7 @@
 
   <nav class="sidebar">
     <div class="logo">
-      <div class="logo-mark">MG</div>
+      <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
       <div class="logo-text">MGMCOET<span>Student Portal</span></div>
     </div>
     <div class="nav-section-label">Menu</div>
@@ -978,6 +979,7 @@
 
   <div class="toast" id="toast"><i class="fas fa-paper-plane"></i> <span id="toastMsg">Action Successful</span></div>
 
+  <script src="ui-feedback.js"></script>
   <script type="module">
     import { supabase } from "./supabase-config.js";
     // Firebase SDKs Import
@@ -1025,27 +1027,46 @@
     let selectedShareResource = null;
     let currentUser = null;
 
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function safeResourceUrl(value) {
+      try {
+        const url = new URL(String(value || ''), location.href);
+        if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com' ||
+            !url.pathname.startsWith('/n4yrq0td/') || url.username || url.password) return '';
+        return url.href;
+      } catch {
+        return '';
+      }
+    }
+
     function resourcePageUrl(resource) {
       const url = new URL('elibrary.html', location.href);
-      url.searchParams.set('resource', resource.id);
+      url.searchParams.set('resource', String(resource.id));
       return url.href;
     }
 
     function openResource(resource) {
-      if (!resource || !resource.link) return;
-      document.getElementById('viewerTitle').textContent = resource.title || 'Resource';
-      document.getElementById('viewerOpenLink').href = resource.link;
-      document.getElementById('viewerDownloadLink').href = resource.link;
+      const link = safeResourceUrl(resource?.link);
+      if (!resource || !link) {
+        portalToast('This resource link is invalid or insecure.', 'error');
+        return;
+      }
+      document.getElementById('viewerTitle').textContent = String(resource.title || 'Resource');
+      document.getElementById('viewerOpenLink').href = link;
+      document.getElementById('viewerDownloadLink').href = link;
       const content = document.getElementById('viewerContent');
       content.replaceChildren();
-      if (resource.mime === 'application/pdf' || /\.pdf(?:$|[?#])/i.test(resource.link)) {
+      if (resource.mime === 'application/pdf' || /\.pdf(?:$|[?#])/i.test(link)) {
         const frame = document.createElement('iframe');
-        frame.src = resource.link;
+        frame.src = link;
         frame.title = resource.title || 'PDF viewer';
         content.appendChild(frame);
       } else if ((resource.mime || '').startsWith('image/')) {
         const image = document.createElement('img');
-        image.src = resource.link; image.alt = resource.title || 'Resource preview';
+        image.src = link; image.alt = resource.title || 'Resource preview';
         content.appendChild(image);
       } else {
         const note = document.createElement('p');
@@ -1084,18 +1105,22 @@
 
     function cardHTML(r) {
       const meta = CAT_META[r.category] || CAT_META.Notes;
-      return `<div class="res-card" data-title="${r.title.toLowerCase()}" data-cat="${r.category}">
+      const title = String(r.title || 'Untitled resource');
+      const category = String(r.category || 'Notes');
+      const id = String(r.id || '');
+      const rating = Number.isFinite(Number(r.rating)) ? Number(r.rating).toFixed(1) : '0.0';
+      return `<div class="res-card" data-title="${escapeHTML(title.toLowerCase())}" data-cat="${escapeHTML(category)}">
       <div class="res-top">
         <div class="res-icon" style="background:${ICON_BG[meta.cls]}"><i class="fas ${meta.icon}"></i></div>
-        <span class="cat-tag cat-${r.category}">${r.category}</span>
+        <span class="cat-tag cat-${escapeHTML(category)}">${escapeHTML(category)}</span>
       </div>
-      <div class="res-title">${r.title}</div>
-      <div class="res-author">${r.author}</div>
-      <div class="res-rating"><i class="fas fa-star"></i> ${r.rating.toFixed(1)}/5</div>
+      <div class="res-title">${escapeHTML(title)}</div>
+      <div class="res-author">${escapeHTML(r.author || 'Anonymous')}</div>
+      <div class="res-rating"><i class="fas fa-star"></i> ${rating}/5</div>
       <div class="res-actions">
-        <button class="dl-btn" type="button" data-open-resource="${r.id}"><i class="fas fa-book-open"></i> View</button>
-        <button class="share-btn" type="button" data-share-resource="${r.id}" aria-label="Share ${r.title.replace(/"/g, '&quot;')}"><i class="fas fa-share-nodes"></i></button>
-        ${currentUser && r.ownerId === currentUser.id ? `<button class="share-btn delete-btn" type="button" data-delete-resource="${r.id}" aria-label="Delete ${r.title.replace(/"/g, '&quot;')}" title="Delete your upload"><i class="fas fa-trash"></i></button>` : ''}
+        <button class="dl-btn" type="button" data-open-resource="${escapeHTML(id)}"><i class="fas fa-book-open"></i> View</button>
+        <button class="share-btn" type="button" data-share-resource="${escapeHTML(id)}" aria-label="Share ${escapeHTML(title)}"><i class="fas fa-share-nodes"></i></button>
+        ${currentUser && r.ownerId === currentUser.id ? `<button class="share-btn delete-btn" type="button" data-delete-resource="${escapeHTML(id)}" aria-label="Delete ${escapeHTML(title)}" title="Delete your upload"><i class="fas fa-trash"></i></button>` : ''}
       </div>
     </div>`;
     }
@@ -1104,7 +1129,7 @@
       const grid = document.getElementById('resGrid');
       const filtered = resources.filter(r => {
         const catOk = activeCat === 'All' || r.category === activeCat;
-        const searchOk = !searchTerm || r.title.toLowerCase().includes(searchTerm);
+        const searchOk = !searchTerm || String(r?.title || '').toLowerCase().includes(searchTerm);
         return catOk && searchOk;
       });
       if (!filtered.length) {
@@ -1120,7 +1145,7 @@
     async function deleteResource(resourceId) {
       const resource = resources.find(r => r.id === resourceId);
       if (!resource || !currentUser || resource.ownerId !== currentUser.id) return;
-      if (!confirm(`Delete "${resource.title}" from the eLibrary?`)) return;
+      if (!await portalConfirm(`Delete "${resource.title}" from the eLibrary?`, { danger: true, confirmText: 'Delete resource' })) return;
       try {
         await deleteDoc(doc(db, 'elibrary_resources', resource.id));
         resources = resources.filter(r => r.id !== resource.id);
@@ -1128,7 +1153,7 @@
         showToast('Your resource was deleted');
       } catch (error) {
         console.error('Resource delete failed:', error);
-        alert('Could not delete this resource: ' + error.message);
+        portalToast('Could not delete this resource: ' + error.message, 'error');
       }
     }
 
@@ -1167,7 +1192,7 @@
     document.getElementById('copyShareLink').addEventListener('click', async () => {
       if (!selectedShareResource) return;
       try { await navigator.clipboard.writeText(resourcePageUrl(selectedShareResource)); showToast('Public viewer link copied'); }
-      catch { showToast('Link copy nahi hua. Browser permission check karein.'); }
+      catch { showToast('Unable to copy the link. Check your browser permissions.'); }
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { viewerOverlay.classList.remove('open'); document.getElementById('shareOverlay').classList.remove('open'); } });
 
@@ -1184,11 +1209,11 @@
       const { data: { session } } = await supabase.auth.getSession();
       currentUser = session?.user || null;
       if (!currentUser) {
-        alert('Please sign in before uploading so you can manage and delete your own resources.');
+        portalToast('Please sign in before uploading so you can manage and delete your own resources.', 'error');
         return;
       }
       if (fileInput.size > 100 * 1024 * 1024) {
-        alert('File must be 100 MB or smaller.');
+        portalToast('File must be 100 MB or smaller.', 'error');
         return;
       }
 
@@ -1237,7 +1262,7 @@
       } catch (error) {
         console.error("Upload error:", error);
         // UPDATED ERROR ALERT: Ab exact problem screen par dikhegi
-        alert("Error: " + error.message + "\nPlease check browser console for more details.");
+        portalToast("Upload failed: " + error.message, 'error');
       } finally {
         submitBtn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> Upload & Add Resource';
         submitBtn.disabled = false;

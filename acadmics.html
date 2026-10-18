@@ -2,10 +2,11 @@
 <html lang="en">
 
 <head>
-    <script>if (window.top !== window.self) { document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important;padding-bottom:40px!important}.mobile-nav{display:none!important}</style>'); }</script>
+    <script>if (window.top !== window.self) { document.write('<style>.sidebar{display:none!important}.main-content{margin-left:0!important;width:100%!important;padding-bottom:40px!important}.mobile-nav{display:none!important}@media(max-width:900px){.main-content{padding-top:84px!important}.page-header{align-items:flex-start!important;gap:12px}}@media(max-width:480px){.page-header{flex-direction:column!important;align-items:stretch!important;gap:12px!important}.page-header>div:last-child{justify-content:flex-start!important}.page-header>div:last-child .back-btn{flex:1;justify-content:center}}</style>'); }</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Student Portal | Academics</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -1075,6 +1076,22 @@
         .video-frame:fullscreen {
             border-radius: 0;
             aspect-ratio: auto;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            max-width: none;
+            background: #000;
+        }
+
+        .video-frame:-webkit-full-screen { width: 100vw; height: 100vh; background: #000; }
+        .video-frame:fullscreen video, .video-frame:-webkit-full-screen video { width: 100%; height: 100%; }
+        @media (orientation: portrait) and (max-width: 900px) {
+            .video-frame:fullscreen, .video-frame:-webkit-full-screen {
+                position: fixed; top: 50%; left: 50%;
+                width: 100vh; height: 100vw; width: 100dvh; height: 100vw;
+                max-width: none; aspect-ratio: auto;
+                transform: translate(-50%, -50%) rotate(90deg);
+            }
         }
 
         .video-frame.hide-cursor {
@@ -1334,6 +1351,19 @@
             .player-time {
                 font-size: 11px;
             }
+            .video-frame { border-radius: 12px; }
+            .player-controls { padding: 28px 8px 8px; }
+            .controls-row { gap: 2px; }
+            .ctrl-btn { width: 32px; height: 34px; }
+            .speed-select { padding: 6px 4px; font-size: 11px; }
+            #qualitySel { max-width: 76px; }
+        }
+
+        @media (max-width: 380px) {
+            .player-time { font-size: 10px; margin-left: 2px; }
+            .speed-select { max-width: 58px; }
+            #qualitySel { max-width: 64px; }
+            .ctrl-btn { width: 29px; }
         }
 
         .now-playing {
@@ -1796,6 +1826,13 @@
                 border-radius: 8px;
             }
 
+            .player-controls { padding: 26px 7px 7px; }
+            .controls-row { flex-wrap: nowrap; min-width: 0; }
+            .ctrl-btn { width: 32px; height: 36px; font-size: 14px; }
+            .speed-select { font-size: 12px; padding: 5px 3px; }
+            #qualitySel { max-width: 68px; }
+            #speedSel { max-width: 56px; }
+
             /* 16px stops iOS zooming when tapped */
             .big-play {
                 width: 60px;
@@ -1837,7 +1874,7 @@
     <!-- SIDEBAR -->
     <nav class="sidebar">
         <div class="logo">
-            <div class="logo-mark">MG</div>
+            <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
             <div class="logo-text">MGMCOET<span>Student Portal</span></div>
         </div>
 
@@ -2008,6 +2045,7 @@
                                     aria-label="Volume">
                                 <span class="player-time" id="timeLabel">0:00 / 0:00</span>
                                 <span class="ctrl-spacer"></span>
+                                <select class="speed-select" id="qualitySel" aria-label="Video quality" title="Video quality" hidden></select>
                                 <select class="speed-select" id="speedSel" aria-label="Playback speed">
                                     <option value="0.5">0.5x</option>
                                     <option value="0.75">0.75x</option>
@@ -2208,8 +2246,8 @@
                 const validDue = due && !Number.isNaN(due.getTime());
                 const overdue = validDue && due.getTime() < Date.now();
                 const deadlineText = validDue ? due.toLocaleString(undefined, item.deadline.length === 10 ? { year: 'numeric', month: 'short', day: 'numeric' } : { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : "Deadline not announced";
-                const assignmentUrl = item.assignmentUrl && !item.assignmentUrl.includes("PLACEHOLDER") ? item.assignmentUrl : "";
-                const solutionUrl = item.solutionUrl && !item.solutionUrl.includes("PLACEHOLDER") ? item.solutionUrl : "";
+                const assignmentUrl = isRealUrl(item.assignmentUrl) ? item.assignmentUrl : "";
+                const solutionUrl = isRealUrl(item.solutionUrl) ? item.solutionUrl : "";
                 return `<article class="assignment-card">
             <div class="assignment-card-top"><div class="assignment-icon"><i class="fas fa-file-alt"></i></div><div><h3>${escapeAssignmentText(title)}</h3><p class="assignment-desc">${escapeAssignmentText(description)}</p></div></div>
             <div class="deadline-box ${overdue ? 'overdue' : (validDue ? 'upcoming' : '')}"><i class="fas ${overdue ? 'fa-circle-exclamation' : 'fa-calendar-day'}"></i><div class="deadline-copy"><span>${overdue ? 'Deadline passed' : 'Submission deadline'}</span><strong>${escapeAssignmentText(deadlineText)}</strong></div></div>
@@ -2243,11 +2281,14 @@
             const grid = document.getElementById('noticeGrid');
             document.getElementById('pageTitle').textContent = 'Class Notices';
             document.getElementById('noticeSummary').textContent = `${academicNotices.length} notice${academicNotices.length === 1 ? '' : 's'} for your class`;
-            grid.innerHTML = academicNotices.map(item => `<article class="assignment-card">
+            grid.innerHTML = academicNotices.map(item => {
+                const fileUrl = isRealUrl(item.file_url) ? item.file_url : '';
+                return `<article class="assignment-card">
                 <div class="assignment-card-top"><div class="assignment-icon cyan"><i class="fas fa-bullhorn"></i></div><div><h3>${escapeAssignmentText(item.title)}</h3><p class="assignment-desc">${escapeAssignmentText(item.category || 'General')} · ${new Date(item.created_at).toLocaleDateString()}</p></div></div>
                 <p class="assignment-desc">${escapeAssignmentText(item.body || '')}</p>
-                ${item.file_url ? `<div class="assignment-actions"><a class="btn btn-primary" data-view-doc data-view-url="${escapeAssignmentAttr(item.file_url)}" data-view-title="${escapeAssignmentAttr(item.title || 'Notice attachment')}" href="${escapeAssignmentAttr(item.file_url)}"><i class="fas fa-paperclip"></i> Open attachment</a></div>` : ''}
-            </article>`).join('');
+                ${fileUrl ? `<div class="assignment-actions"><a class="btn btn-primary" data-view-doc data-view-url="${escapeAssignmentAttr(fileUrl)}" data-view-title="${escapeAssignmentAttr(item.title || 'Notice attachment')}" href="${escapeAssignmentAttr(fileUrl)}"><i class="fas fa-paperclip"></i> Open attachment</a></div>` : ''}
+            </article>`;
+            }).join('');
             document.getElementById('noticeEmpty').style.display = academicNotices.length ? 'none' : 'block';
             grid.style.display = academicNotices.length ? 'grid' : 'none';
             showView('viewNotices');
@@ -2259,7 +2300,13 @@
         function escapeAssignmentAttr(value) { return escapeAssignmentText(value); }
 
         /* ============ LAB MANUALS & PYQ VIEWS ============ */
-        function isRealUrl(url) { return !!url && !String(url).includes("PLACEHOLDER"); }
+        function isRealUrl(value) {
+            if (!value || String(value).includes("PLACEHOLDER")) return false;
+            try {
+                const url = new URL(String(value));
+                return url.protocol === 'https:' && !url.username && !url.password;
+            } catch (_) { return false; }
+        }
         function docActionButton(url, label, icon, primary) {
             return isRealUrl(url)
                 ? `<a class="btn ${primary ? 'btn-primary' : 'btn-ghost'}" data-view-doc data-view-url="${escapeAssignmentAttr(url)}" data-view-title="${escapeAssignmentAttr(label)}" href="${escapeAssignmentAttr(url)}"><i class="fas ${icon}"></i> ${label}</a>`
@@ -2359,20 +2406,22 @@
             const pyqs = document.getElementById("resourcePyqs");
             if (title) title.textContent = chapter.title;
             if (notes) {
-                notes.href = chapter.notes || "#";
-                notes.dataset.viewUrl = chapter.notes || "";
+                const notesUrl = isRealUrl(chapter.notes) ? chapter.notes : '';
+                notes.href = notesUrl || "#";
+                notes.dataset.viewUrl = notesUrl;
                 notes.dataset.viewTitle = chapter.title + " · Notes";
-                notes.toggleAttribute("data-view-doc", !!chapter.notes);
-                notes.style.opacity = chapter.notes ? "1" : ".55";
-                notes.onclick = chapter.notes ? null : (event) => event.preventDefault();
+                notes.toggleAttribute("data-view-doc", !!notesUrl);
+                notes.style.opacity = notesUrl ? "1" : ".55";
+                notes.onclick = notesUrl ? null : (event) => event.preventDefault();
             }
             if (practice) {
-                practice.href = chapter.practice || "#";
-                practice.dataset.viewUrl = chapter.practice || "";
+                const practiceUrl = isRealUrl(chapter.practice) ? chapter.practice : '';
+                practice.href = practiceUrl || "#";
+                practice.dataset.viewUrl = practiceUrl;
                 practice.dataset.viewTitle = chapter.title + " · Practice";
-                practice.toggleAttribute("data-view-doc", !!chapter.practice);
-                practice.style.opacity = chapter.practice ? "1" : ".55";
-                practice.onclick = chapter.practice ? null : (event) => event.preventDefault();
+                practice.toggleAttribute("data-view-doc", !!practiceUrl);
+                practice.style.opacity = practiceUrl ? "1" : ".55";
+                practice.onclick = practiceUrl ? null : (event) => event.preventDefault();
             }
             if (pyqs) {
                 pyqs.innerHTML = (subject.pyqs || []).length
@@ -2415,24 +2464,45 @@
         const volBar = document.getElementById('volBar');
         const timeLabel = document.getElementById('timeLabel');
         const speedSel = document.getElementById('speedSel');
+        const qualitySel = document.getElementById('qualitySel');
         const SPEED_KEY = 'academics_speed_v1';
         let mediaFor = null;      // which lecture the <video> currently holds: { key, index }
         let pendingStart = 0;     // resume position applied once metadata is loaded
         let scrubbing = false;
         let hideTimer = null;
+        let activeSources = [];
+
+        // video_url may be a legacy URL or a JSON list/object of quality URLs.
+        function getVideoSources(value) {
+            let parsed = value;
+            if (typeof value === 'string' && /^[\[{]/.test(value.trim())) {
+                try { parsed = JSON.parse(value); } catch (_) { parsed = value; }
+            }
+            let entries;
+            if (Array.isArray(parsed)) entries = parsed.map(item => typeof item === 'string' ? { url: item } : item);
+            else if (parsed && typeof parsed === 'object') {
+                const raw = parsed.sources || parsed.qualities || parsed;
+                entries = Array.isArray(raw) ? raw : Object.entries(raw).map(([label, url]) => typeof url === 'string' ? { label, url } : { label, ...url });
+            } else entries = [{ label: 'Auto', url: parsed }];
+            return entries.filter(item => item && typeof item.url === 'string' && item.url.trim()).map(item => ({
+                label: String(item.label || item.quality || item.resolution || 'Auto'),
+                url: normalizeHostedVideoUrl(item.url)
+            })).filter(item => item.url);
+        }
 
         function setIcon(btn, cls) { btn.innerHTML = '<i class="fas ' + cls + '"></i>'; }
 
         function normalizeHostedVideoUrl(value) {
             try {
-                const url = new URL(value, window.location.href);
+                const url = new URL(value);
+                if (url.protocol !== 'https:' || url.username || url.password) return '';
                 if ((url.hostname === 'huggingface.co' || url.hostname === 'www.huggingface.co') && url.pathname.split('/').includes('blob')) {
                     url.pathname = url.pathname.replace('/blob/', '/resolve/');
                     url.search = '?download=true';
                 }
                 return url.href;
             } catch (error) {
-                return value;
+                return '';
             }
         }
 
@@ -2445,8 +2515,32 @@
             timeLabel.textContent = '0:00 / 0:00';
             setIcon(document.getElementById('btnPlay'), 'fa-play');
             media.pause();
-            media.src = normalizeHostedVideoUrl(url);
+            activeSources = getVideoSources(url);
+            qualitySel.replaceChildren();
+            activeSources.forEach((source, i) => {
+                const option = document.createElement('option');
+                option.value = String(i); option.textContent = source.label;
+                qualitySel.append(option);
+            });
+            qualitySel.hidden = activeSources.length < 2;
+            media.src = activeSources[0]?.url || normalizeHostedVideoUrl(url);
             media.load();
+        }
+
+        function changeQuality() {
+            const source = activeSources[Number(qualitySel.value)];
+            if (!source || media.src === source.url) return;
+            const position = media.currentTime || pendingStart || 0;
+            const wasPlaying = !media.paused;
+            pendingStart = position;
+            frame.classList.remove('has-error');
+            frame.classList.add('is-loading');
+            media.src = source.url;
+            media.load();
+            if (wasPlaying) media.addEventListener('canplay', function resume() {
+                media.removeEventListener('canplay', resume);
+                media.play().catch(() => {});
+            });
         }
 
         function saveCurrentPlayback() {
@@ -2488,9 +2582,13 @@
         function toggleFullscreen() {
             const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
             if (fsEl) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
-            if (frame.requestFullscreen) frame.requestFullscreen();
-            else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
-            else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen(); // iOS Safari
+            const request = frame.requestFullscreen || frame.webkitRequestFullscreen;
+            if (request) {
+                const result = request.call(frame);
+                if (result && result.then) result.then(() => {
+                    if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
+                }).catch(() => {});
+            } else if (media.webkitEnterFullscreen) media.webkitEnterFullscreen(); // iOS Safari uses native fullscreen
         }
 
         (function initPlayer() {
@@ -2531,6 +2629,7 @@
                 media.defaultPlaybackRate = rate; media.playbackRate = rate;
                 try { localStorage.setItem(SPEED_KEY, String(rate)); } catch (e) { }
             });
+            qualitySel.addEventListener('change', changeQuality);
 
             seekBar.addEventListener('pointerdown', () => { scrubbing = true; });
             seekBar.addEventListener('input', () => {
@@ -2577,7 +2676,13 @@
             frame.addEventListener('mousemove', revealControls);
             frame.addEventListener('touchstart', revealControls, { passive: true });
             frame.addEventListener('mouseleave', () => { if (!media.paused) { clearTimeout(hideTimer); hideTimer = setTimeout(() => frame.classList.remove('show-controls'), 600); } });
-            document.addEventListener('fullscreenchange', () => setIcon(document.getElementById('btnFs'), document.fullscreenElement ? 'fa-compress' : 'fa-expand'));
+            const syncFullscreen = () => {
+                const fullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+                setIcon(document.getElementById('btnFs'), fullscreen ? 'fa-compress' : 'fa-expand');
+                if (!fullscreen && screen.orientation?.unlock) screen.orientation.unlock();
+            };
+            document.addEventListener('fullscreenchange', syncFullscreen);
+            document.addEventListener('webkitfullscreenchange', syncFullscreen);
 
             // Keyboard shortcuts (only while the study room is open)
             document.addEventListener('keydown', (e) => {

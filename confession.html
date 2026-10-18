@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Portal | Confessions</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -977,7 +978,7 @@
     <!-- SIDEBAR -->
     <nav class="sidebar">
         <div class="logo">
-            <div class="logo-mark">MG</div>
+            <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
             <div class="logo-text">MGMCOET<span>Student Portal</span></div>
         </div>
         <div class="nav-section-label">Menu</div>
@@ -1066,6 +1067,7 @@
 
     </div>
 
+    <script src="ui-feedback.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         /*
@@ -1104,6 +1106,14 @@
         const escapeHTML = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({
             "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
         }[c]));
+        function safeConfessionMediaUrl(value) {
+            try {
+                const url = new URL(String(value || ''));
+                return url.protocol === 'https:' && url.hostname === 'res.cloudinary.com' &&
+                    url.pathname.startsWith(`/${CLOUDINARY_CLOUD_NAME}/`) && !url.username && !url.password
+                    ? url.href : '';
+            } catch { return ''; }
+        }
         const randomAvatar = () => avatars[Math.floor(Math.random() * avatars.length)];
 
         function autoResize(el) {
@@ -1121,8 +1131,8 @@
         function previewImage(event) {
             const file = event.target.files?.[0];
             if (!file) return;
-            if (!/^image\/|^video\//.test(file.type)) { alert("Please select an image or video."); event.target.value = ""; return; }
-            if (file.size > 50 * 1024 * 1024) { alert("Media must be 50 MB or smaller."); event.target.value = ""; return; }
+            if (!/^image\/|^video\//.test(file.type)) { portalToast("Please select an image or video.", 'error'); event.target.value = ""; return; }
+            if (file.size > 50 * 1024 * 1024) { portalToast("Media must be 50 MB or smaller.", 'error'); event.target.value = ""; return; }
             selectedFile = file;
             const box = document.getElementById("imagePreviewBox");
             const img = document.getElementById("imagePreview");
@@ -1228,8 +1238,10 @@
             }
             myLikes = new Set();
             if (currentUser) {
+                // Vote visibility is controlled by the table's RLS policy. This
+                // deployment does not have a `user_id` column on confession_votes.
                 const { data: votes, error: voteErr } = await sb.from("confession_votes")
-                    .select("post_id").eq("user_id", currentUser.id);
+                    .select("post_id");
                 if (voteErr) console.warn("confession_votes:", voteErr.message);
                 else myLikes = new Set((votes || []).map(v => String(v.post_id)));
             }
@@ -1254,9 +1266,10 @@
             card.style.animationDelay = `${Math.min(i, 8) * .04}s`;
             const tag = categoryLabels[post.tag] ? post.tag : "tag-funny";
             const isMine = myPostIds.has(String(post.id));
-            const media = post.media_url ? (post.media_type === "video"
-                ? `<video class="c-video" src="${escapeHTML(post.media_url)}" controls preload="metadata"></video>`
-                : `<img class="c-image" src="${escapeHTML(post.media_url)}" alt="Anonymous attachment" loading="lazy">`) : "";
+            const mediaUrl = safeConfessionMediaUrl(post.media_url);
+            const media = mediaUrl ? (post.media_type === "video"
+                ? `<video class="c-video" src="${escapeHTML(mediaUrl)}" controls preload="metadata"></video>`
+                : `<img class="c-image" src="${escapeHTML(mediaUrl)}" alt="Anonymous attachment" loading="lazy">`) : "";
             card.innerHTML = `
     <div class="c-header"><div class="c-author"><div class="anon-avatar">${escapeHTML(post.avatar_emoji || "🎭")}</div>
       <div class="c-author-info"><strong>Anonymous</strong><span>${escapeHTML(timeAgo(post.created_at))}</span></div></div>
@@ -1297,8 +1310,8 @@
             card.querySelector(".c-count").textContent = Number(data.comment_count) || 0;
         }
         async function toggleUpvote(card, postId) {
-            if (!sb) return alert("Configure Supabase first.");
-            if (!currentUser) return alert("Please sign in to vote.");
+            if (!sb) return portalToast("Configure Supabase first.", 'error');
+            if (!currentUser) return portalToast("Please sign in to vote.", 'error');
             const btn = card.querySelector('[data-action="vote"]');
             const wasLiked = btn.classList.contains("liked");
             const before = Number(btn.querySelector(".count").textContent) || 0;
@@ -1308,7 +1321,7 @@
             btn.disabled = false;
             if (error) {
                 setLiked(btn, wasLiked, before);                                   // fail hua to wapas
-                return alert("Could not save vote: " + error.message);
+                return portalToast("Could not save vote: " + error.message, 'error');
             }
             wasLiked ? myLikes.delete(String(postId)) : myLikes.add(String(postId));
             await refreshCounts(card, postId);
@@ -1336,11 +1349,11 @@
             const input = card.querySelector(".comment-input");
             const body = input.value.trim();
             if (!body) return;
-            if (!sb || !currentUser) return alert("Please sign in to comment.");
+            if (!sb || !currentUser) return portalToast("Please sign in to comment.", 'error');
             const btn = card.querySelector('[data-action="send-comment"]'); btn.disabled = true;
             const { error } = await sb.from("confession_comments").insert({ post_id: postId, body, avatar_emoji: randomAvatar() });
             btn.disabled = false;
-            if (error) return alert("Could not post comment: " + error.message);
+            if (error) return portalToast("Could not post comment: " + error.message, 'error');
             input.value = "";
             const cc = card.querySelector(".c-count");
             cc.textContent = (Number(cc.textContent) || 0) + 1;                    // turant dikhao
@@ -1348,22 +1361,22 @@
             await refreshCounts(card, postId);
         }
         async function reportPost(postId) {
-            if (!sb || !currentUser) return alert("Please sign in to report a post.");
-            if (!confirm("Report this confession to the moderators? Reports are reviewed anonymously.")) return;
+            if (!sb || !currentUser) return portalToast("Please sign in to report a post.", 'error');
+            if (!await portalConfirm("Report this confession to the moderators? Reports are reviewed anonymously.", { confirmText: 'Report post' })) return;
             const { error } = await sb.rpc("report_confession", { p_post_id: postId });
-            if (error) return alert("Could not submit report: " + error.message);
-            alert("Report submitted. The post is hidden automatically after more than 3 unique reports.");
+            if (error) return portalToast("Could not submit report: " + error.message, 'error');
+            portalToast("Report submitted.");
             await loadFeed();
         }
         async function deletePost(card, postId) {
-            if (!sb || !currentUser) return alert("Please sign in first.");
-            if (!confirm("Ye post hamesha ke liye delete ho jayegi. Pakka?")) return;
+            if (!sb || !currentUser) return portalToast("Please sign in first.", 'error');
+            if (!await portalConfirm("This post will be permanently deleted. Continue?", { danger: true, confirmText: 'Delete post' })) return;
             const btn = card.querySelector('[data-action="delete"]');
             if (btn) btn.disabled = true;
             const { error } = await sb.rpc("delete_my_confession", { p_post_id: String(postId) });
             if (error) {
                 if (btn) btn.disabled = false;
-                return alert("Could not delete: " + error.message);
+                return portalToast("Could not delete: " + error.message, 'error');
             }
             card.style.transition = "opacity .25s, transform .25s";
             card.style.opacity = "0";
@@ -1373,11 +1386,11 @@
         let isPosting = false;
         async function postConfession() {
             if (isPosting) return;
-            if (!sb) return alert("Configure Supabase first (project URL and anon key).");
-            if (!currentUser) return alert("Please sign in before posting.");
+            if (!sb) return portalToast("Configure Supabase first (project URL and anon key).", 'error');
+            if (!currentUser) return portalToast("Please sign in before posting.", 'error');
             const input = document.getElementById("confessionInput");
             const body = input.value.trim();
-            if (!body && !selectedFile) return alert("Please write something or attach an image/video.");
+            if (!body && !selectedFile) return portalToast("Please write something or attach an image/video.", 'error');
             const submit = document.querySelector(".btn-submit");
             isPosting = true;
             submit.disabled = true;
@@ -1392,7 +1405,7 @@
                 input.value = ""; autoResize(input); clearImage();
                 document.getElementById("feedArea").scrollTo({ top: 0, behavior: "smooth" });
                 await loadFeed();
-            } catch (e) { alert("Post failed: " + (e.message || "Unknown error")); }
+            } catch (e) { portalToast("Post failed: " + (e.message || "Unknown error"), 'error'); }
             finally { isPosting = false; submit.disabled = false; }
         }
         document.querySelectorAll(".filter-btn").forEach(btn => btn.addEventListener("click", async () => {

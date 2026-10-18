@@ -6,7 +6,8 @@ import {
 } from './chat-crypto.js';
 import {
   CLOUDINARY_CLOUD, CLOUDINARY_PRESET,
-  MAX_FILE_BYTES, PAGE_SIZE, ENABLE_PRESENCE
+  MAX_FILE_BYTES, PAGE_SIZE, ENABLE_PRESENCE,
+  CHAT_ARCHIVE_BATCH_SIZE, CHAT_ARCHIVE_KEEP_RECENT, CHAT_ARCHIVE_AGE_MS
 } from './chat-config.js';
 
 /* ====================== helpers ====================== */
@@ -14,7 +15,19 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+function isTrustedCloudinaryUrl(value, resourceType) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' && url.hostname === 'res.cloudinary.com' &&
+      url.pathname.startsWith(`/${CLOUDINARY_CLOUD}/${resourceType}/upload/`) &&
+      !url.username && !url.password;
+  } catch { return false; }
+}
+
 const PALETTE = ['avatar-blue', 'avatar-indigo', 'avatar-cyan', 'avatar-amber', 'avatar-danger'];
+const archivingConversations = new Set();
+const pendingArchiveChecks = new Set();
+const archiveWarnings = new Set();
 const colorFor = (id) => PALETTE[[...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
 const initialsOf = (n) => (n || '?').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -169,8 +182,8 @@ function ensureUnlockUI() {
       <h3><span><i class="fas fa-lock" style="cursor:default;color:var(--blue);margin-right:8px"></i>Unlock chat</span>
         <i class="fas fa-xmark" id="unlockClose"></i></h3>
       <p class="modal-subtext" style="margin:-6px 0 14px">
-        Is device par encryption key nahi hai. Signup par jo Security Keyword banaya tha wo daalo.
-        Ye ek baar karna hai, baar-baar nahi.</p>
+        No encryption key was found on this device. Enter the Security Keyword you created during sign-up.
+        Choose 'Remember this device' at sign-in to keep the key here and avoid future prompts. Each device needs its own first unlock.</p>
       <input type="password" class="modal-input" id="unlockInput" placeholder="Security Keyword" autocomplete="off">
       <p id="unlockErr" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></p>
       <button class="req-btn btn-accept" id="unlockBtn" style="width:100%;justify-content:center;margin-top:14px">
@@ -192,7 +205,7 @@ function ensureLockBlock() {
   b.id = 'lockBlock';
   b.style.display = 'none';
   b.innerHTML = `
-    <p><i class="fas fa-lock" style="color:var(--blue);margin-right:6px;"></i>Chat locked. Message padhne/bhejne ke liye Security Keyword se unlock karo.</p>
+    <p><i class="fas fa-lock" style="color:var(--blue);margin-right:6px;"></i>Chat locked. Use your Security Keyword to unlock it and read or send messages.</p>
     <div class="request-buttons">
       <button class="req-btn btn-accept" id="lockBlockBtn"><i class="fas fa-unlock"></i> Unlock</button>
     </div>`;
@@ -203,11 +216,11 @@ function ensureLockBlock() {
 function lockedNote() {
   const d = document.createElement('div');
   d.className = 'empty-note';
-  d.innerHTML = '🔒 Is device par encryption key nahi hai.<br>';
+  d.innerHTML = '';
   const btn = document.createElement('button');
   btn.className = 'req-btn btn-accept';
   btn.style.cssText = 'margin:12px auto 0;display:inline-flex;align-items:center;gap:8px;';
-  btn.innerHTML = '<i class="fas fa-unlock"></i> Keyword se unlock karo';
+  btn.innerHTML = '<i class="fas fa-unlock"></i> Unlock with keyword';
   btn.addEventListener('click', openUnlock);
   d.appendChild(btn);
   return d;
@@ -216,22 +229,22 @@ function lockedNote() {
 async function doUnlock() {
   const kw = $('unlockInput').value;
   const err = $('unlockErr'), btn = $('unlockBtn');
-  if (!kw.trim()) { err.textContent = 'Keyword daalo.'; err.style.display = 'block'; return; }
+  if (!kw.trim()) { err.textContent = 'Enter your keyword.'; err.style.display = 'block'; return; }
 
   btn.disabled = true; err.style.display = 'none';
   try {
     S.priv = await unlockWithKeyword(kw);
   } catch (e) {
-    err.textContent = e.message === 'WRONG_KEYWORD' ? 'Keyword galat hai. Dobara try karo.'
-      : e.message === 'NO_BACKUP' ? 'Is account ka key backup nahi mila.'
-      : 'Unlock nahi hua: ' + (e.message || 'error');
+    err.textContent = e.message === 'WRONG_KEYWORD' ? 'Incorrect keyword. Please try again.'
+      : e.message === 'NO_BACKUP' ? 'No key backup was found for this account.'
+      : 'Unable to unlock: ' + (e.message || 'Unknown error');
     err.style.display = 'block';
     btn.disabled = false;
     return;
   }
   btn.disabled = false;
   $('unlockModal').classList.remove('show');
-  toast('Chat unlock ho gayi', 'fa-lock-open');
+  toast('Chat unlocked', 'fa-lock-open');
 
   // Jo messages "locked" dikha rahe the unhe dobara decrypt karo
   for (const c of S.convs.values()) {
@@ -283,10 +296,10 @@ async function decryptMsg(c, m) {
   try {
     m._p = await decryptPayload(await keyFor(c, m.group_key_version || 1), m);
   } catch (e) {
-    const why = e.message === 'NO_LOCAL_KEY' ? '🔒 Chat locked (Unlock karo)'
-      : e.message === 'NO_PEER_KEY' ? '🔒 Samne wale ki key available nahi'
-      : '🔒 Message decrypt nahi ho paya';
-    m._p = { t: 'text', text: why, _err: true };
+    const why = e.message === 'NO_LOCAL_KEY' ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Chat locked (Unlock to continue)'
+      : e.message === 'NO_PEER_KEY' ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ The other userÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s encryption key is unavailable'
+      : 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Unable to decrypt this message';
+    m._p = { t: 'unavailable', _err: true };
   }
   return m;
 }
@@ -295,7 +308,7 @@ function warnReceiptSetup(error) {
   console.error('Message receipt setup failed:', error?.message || error);
   if (S.receiptSetupWarned) return;
   S.receiptSetupWarned = true;
-  toast('Tick setup ke liye latest schema_message_receipts.sql Supabase mein Run karo.', 'fa-triangle-exclamation');
+  toast('Run the latest schema_message_receipts.sql in the Supabase SQL Editor to enable message receipts.', 'fa-triangle-exclamation');
 }
 
 async function fetchReceiptRows(messageIds) {
@@ -411,7 +424,7 @@ function onReceiptChange(payload) {
 function previewOf(m) {
   if (m.deleted_at || m._p?.t === 'deleted') return 'This message was deleted';
   const p = m._p || {};
-  const body = p.t === 'file' && p.file ? '📎 ' + p.file.name : (p.text || '');
+  const body = p.t === 'file' && p.file ? 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â½ ' + p.file.name : (p.text || '');
   return (m.sender_id === S.me ? 'You: ' : '') + body;
 }
 
@@ -419,7 +432,7 @@ function previewOf(m) {
 async function loadConversations() {
   const { data: rows, error } = await supabase.from('conversations')
     .select('*').order('last_message_at', { ascending: false });
-  if (error) { toast('Chats load nahi hui: ' + error.message, 'fa-triangle-exclamation'); return; }
+  if (error) { toast('Unable to load chats: ' + error.message, 'fa-triangle-exclamation'); return; }
   const directIds = rows.filter((r) => !r.is_group).map(otherIdOf);
   const groupIds = rows.filter((r) => r.is_group).map((r) => r.id);
   let memberRows = [];
@@ -473,6 +486,7 @@ async function loadInitial(c) {
   await addMessages(c, rows);
   c.loaded = true;
   c.loading = false;
+  void archiveOverflow(c);
 }
 
 /* ---------- Archive: index Supabase 'chat_archives' me, files Cloudinary par ---------- */
@@ -492,6 +506,7 @@ async function loadNextArchive(c) {
 
   const file = c.archiveFiles[c.archiveIdx++];
   try {
+    if (!isTrustedCloudinaryUrl(file.url, 'raw')) throw new Error('INVALID_ARCHIVE_URL');
     const r = await fetch(file.url);                         // browser seedha Cloudinary se padhta hai
     if (!r.ok) throw new Error('ARCHIVE_' + r.status);
     let msgs = (await r.json()).messages || [];
@@ -523,10 +538,14 @@ async function loadOlder(c) {
       if (rows.length < PAGE_SIZE) c.liveExhausted = true;
       added = await addMessages(c, rows);
     }
-    while (!added && c.liveExhausted && !c.archiveDone) added = await loadNextArchive(c);
+    if (c.liveExhausted && !c.archiveDone) {
+      let archiveAdded = 0;
+      while (!archiveAdded && !c.archiveDone) archiveAdded = await loadNextArchive(c);
+      added += archiveAdded;
+    }
   } catch (e) {
     console.error(e);
-    toast('Purane messages load nahi hue', 'fa-triangle-exclamation');
+    toast('Unable to load older messages.', 'fa-triangle-exclamation');
   }
   c.loading = false;
   if (S.current === c.id) renderMessages(c, 'prepend');
@@ -536,9 +555,9 @@ async function loadOlder(c) {
 /* ====================== rendering: lists ====================== */
 function snippetFor(c, isReq) {
   if (isReq) return 'Wants to connect with you';
-  if (!S.priv) return '🔒 Encrypted';
-  if (c.status === 'pending') return c.preview ? esc(c.preview) : 'Request sent · waiting';
-  return c.preview ? esc(c.preview) : 'Say hi 👋';
+  if (!S.priv) return '';
+  if (c.status === 'pending') return c.preview ? esc(c.preview) : 'Request sent ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· waiting';
+  return c.preview ? esc(c.preview) : 'Say hi ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹';
 }
 
 function chatItemEl(c, isReq) {
@@ -553,7 +572,7 @@ function chatItemEl(c, isReq) {
     el.innerHTML = `
       <div class="chat-avatar"><div class="av ${colorFor(c.id)}"><i class="fas fa-users"></i></div></div>
       <div class="chat-meta"><div class="row-top"><span class="name">${esc(title)}</span><span class="time">${c.preview ? fmtTime(c.lastAt) : ''}</span></div>
-      <div class="snippet">${c.preview ? esc(c.preview) : esc(subtitle)}</div></div>
+      <div class="snippet">${!S.priv ? '' : (c.preview ? esc(c.preview) : esc(subtitle))}</div></div>
       ${c.unread ? `<div class="unread-badge">${c.unread}</div>` : ''}`;
     return el;
   }
@@ -591,13 +610,13 @@ function renderLists() {
 
   $('tab-chats').replaceChildren(...(chats.length
     ? chats.map((c) => chatItemEl(c, false))
-    : [emptyNote('Abhi koi chat nahi. Upar ✏️ se naya chat shuru karo.')]));
+    : [emptyNote('No chats yet. Start a new chat using the button above.')]));
   $('tab-requests').replaceChildren(...(reqs.length
     ? reqs.map((c) => chatItemEl(c, true))
-    : [emptyNote('Koi pending request nahi.')]));
+    : [emptyNote('No pending requests.')]));
   $('tab-groups').replaceChildren(
     $('groupCreateButton'),
-    ...(groups.length ? groups.sort(byLast).map((c) => chatItemEl(c, false)) : [emptyNote('Abhi koi group nahi. Naya group banao.')])
+    ...(groups.length ? groups.sort(byLast).map((c) => chatItemEl(c, false)) : [emptyNote('No groups yet. Create a group to get started.')])
   );
   document.querySelector('.req-count').textContent = `(${reqs.length})`;
   applySearchFilter();
@@ -630,7 +649,7 @@ function renderChatWindow() {
     renderReplyComposer(null);
     $('requestBlock').style.display = 'none';
     $('blockedBlock').style.display = 'none';
-    $('messagesArea').replaceChildren(emptyNote('Koi chat chuno ya naya chat shuru karo.'));
+    $('messagesArea').replaceChildren(emptyNote('Select a chat or start a new one.'));
     return;
   }
 
@@ -648,7 +667,7 @@ function renderChatWindow() {
   }
 
   if (c.isGroup) {
-    hdrStatus.textContent = `Group · ${c.members.length} members`;
+    hdrStatus.textContent = `Group ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${c.members.length} members`;
     hdrStatus.style.color = 'var(--ink-faint)';
   } else if (c.status === 'pending' && !incomingReq) {
     hdrStatus.innerHTML = '<span class="dot"></span> Request pending';
@@ -751,7 +770,7 @@ async function openAttachment(file, cacheKey) {
     overlay.classList.add('show');
   } catch (e) {
     console.error('Attachment preview failed:', e);
-    toast('File open nahi hui. File dobara download karke dekho.', 'fa-triangle-exclamation');
+    toast('Unable to open the file. Please download it again.', 'fa-triangle-exclamation');
   }
 }
 
@@ -764,7 +783,7 @@ function fileEl(file, cacheKey) {
     img.alt = file.name;
     box.appendChild(img);
     blobUrl(cacheKey, file).then((u) => { img.src = u; img.style.cursor = 'zoom-in'; img.onclick = () => openAttachment(file, cacheKey); })
-      .catch(() => { img.replaceWith(emptyNote('Image load nahi hui')); });
+      .catch(() => { img.replaceWith(emptyNote('Unable to load image.')); });
   }
   const fb = document.createElement('div');
   fb.className = 'file-bubble' + (isImg ? ' image-file-info' : '');
@@ -822,7 +841,13 @@ function msgRow(m) {
     bubble.appendChild(quote);
   }
   let messageActions = null;
-  if (deleted) {
+  if (p._err) {
+    bubble.classList.add('unavailable-bubble');
+    const notice = document.createElement('div'); notice.className = 'message-unavailable';
+    const icon = document.createElement('i'); icon.className = 'fas fa-lock'; icon.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span'); label.textContent = 'Unable to display this message on this device.';
+    notice.append(icon, label); bubble.appendChild(notice);
+  } else if (deleted) {
     bubble.classList.add('deleted-bubble');
     const t = document.createElement('div'); t.className = 'deleted-message'; t.textContent = 'This message was deleted'; bubble.appendChild(t);
   } else {
@@ -830,7 +855,7 @@ function msgRow(m) {
     if (p.text) { const t = document.createElement('div'); appendTextWithLinks(t, p.text); bubble.appendChild(t); }
   }
 
-  if (!deleted && (!m.archived || conversation?.isGroup)) {
+  if (!deleted && !p._err && (!m.archived || conversation?.isGroup)) {
     const reactions = m.reactions || [];
     if (!m.archived && reactions.length) {
       const counts = new Map();
@@ -860,7 +885,7 @@ function msgRow(m) {
     if (m.archived) picker.style.display = 'none';
     const menu = document.createElement('div'); menu.className = 'message-action-popover';
     menu.setAttribute('role', 'menu');
-    for (const emoji of ['👍','❤️','😂','😮','😢','🙏']) {
+    for (const emoji of [String.fromCodePoint(0x1F44D), String.fromCharCode(0x2764, 0xFE0F), String.fromCodePoint(0x1F602), String.fromCodePoint(0x1F62E), String.fromCodePoint(0x1F622), String.fromCodePoint(0x1F64F)]) {
       const choice = document.createElement('button'); choice.type = 'button'; choice.textContent = emoji; choice.title = `React ${emoji}`;
       choice.setAttribute('aria-label', `React ${emoji}`);
       choice.addEventListener('click', () => { setMenuOpen(false); toggleReaction(S.convs.get(m.conversation_id), m, emoji); });
@@ -945,7 +970,7 @@ function msgRow(m) {
     actions.append(moreBtn, menu);
 
     const ageMs = Date.now() - new Date(m.created_at).getTime();
-    if (!m.archived && mine && ageMs <= 24 * 60 * 60 * 1000) {
+    if (!m.archived && mine) {
       if (p.t === 'text' && ageMs <= 15 * 60 * 1000) {
         const editBtn = document.createElement('button');
         editBtn.type = 'button'; editBtn.className = 'message-menu-item';
@@ -955,14 +980,14 @@ function msgRow(m) {
       }
       const deleteBtn = document.createElement('button');
       deleteBtn.type = 'button'; deleteBtn.className = 'message-menu-item danger';
-      deleteBtn.innerHTML = '<i class="fas fa-trash-can"></i><span>Delete for everyone</span>';
+      deleteBtn.innerHTML = '<i class="fas fa-trash-can"></i><span>Unsend message</span>';
       deleteBtn.addEventListener('click', () => { setMenuOpen(false); deleteMessage(S.convs.get(m.conversation_id), m); });
       menu.appendChild(deleteBtn);
     }
     messageActions = actions;
   }
   const meta = document.createElement('div'); meta.className = 'meta-line';
-  meta.innerHTML = (m.edited_at && !deleted ? 'Edited · ' : '') + fmtTime(m.created_at);
+  meta.innerHTML = (m.edited_at && !deleted ? 'Edited ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' : '') + fmtTime(m.created_at);
   if (mine) {
     const status = m.receipt || 'sent';
     const ticks = document.createElement('span');
@@ -997,16 +1022,16 @@ async function toggleReaction(c, m, emoji) {
       result = await supabase.from('message_reactions').upsert(
         { message_id: m.id, user_id: S.me, ...encrypted }, { onConflict: 'message_id,user_id' }
       );
-    } catch (e) { toast('Reaction encrypt nahi hui: ' + e.message, 'fa-triangle-exclamation'); return; }
+    } catch (e) { toast('Unable to encrypt reaction: ' + e.message, 'fa-triangle-exclamation'); return; }
   }
-  if (result.error) { toast('Reaction save nahi hui: ' + result.error.message, 'fa-triangle-exclamation'); return; }
+  if (result.error) { toast('Unable to save reaction: ' + result.error.message, 'fa-triangle-exclamation'); return; }
   await refreshReactions(c, m);
 }
 
 async function refreshReactions(c, m) {
   const { data, error } = await supabase.from('message_reactions')
     .select('message_id,user_id,ciphertext,iv').eq('message_id', m.id);
-  if (error) { toast('Reactions load nahi hui: ' + error.message, 'fa-triangle-exclamation'); return; }
+  if (error) { toast('Unable to load reactions: ' + error.message, 'fa-triangle-exclamation'); return; }
   m.reactions = [];
   for (const ciph of data || []) {
     try {
@@ -1031,7 +1056,7 @@ async function saveEditedMessage() {
   if (!target) return;
   const { c, m } = target;
   const text = $('messageEditText').value.trim();
-  if (!text) { toast('Message khaali nahi ho sakta', 'fa-triangle-exclamation'); return; }
+  if (!text) { toast('Message cannot be empty.', 'fa-triangle-exclamation'); return; }
   $('messageEditSave').disabled = true;
   try {
     const encrypted = await encryptPayload(await keyFor(c, m.group_key_version || 1), { t: 'text', text });
@@ -1046,7 +1071,7 @@ async function saveEditedMessage() {
     pendingMessageEdit = null;
     if (S.current === c.id) renderMessages(c, 'stay');
     renderLists(); toast('Message edited');
-  } catch (e) { toast('Edit nahi hua: ' + e.message, 'fa-triangle-exclamation'); }
+  } catch (e) { toast('Unable to edit message: ' + e.message, 'fa-triangle-exclamation'); }
   finally { $('messageEditSave').disabled = false; }
 }
 
@@ -1074,8 +1099,8 @@ async function confirmDeleteMessage() {
     pendingMessageDelete = null;
     if (c.messages.at(-1)?.id === m.id) c.preview = previewOf(m);
     if (S.current === c.id) renderMessages(c, 'stay');
-    renderLists(); toast('Message deleted for everyone', 'fa-trash-can');
-  } catch (e) { toast('Delete nahi hua: ' + e.message, 'fa-triangle-exclamation'); }
+    renderLists(); toast('Message unsent for everyone', 'fa-trash-can');
+  } catch (e) { toast('Unable to delete message: ' + e.message, 'fa-triangle-exclamation'); }
   finally { $('messageDeleteConfirm').disabled = false; }
 }
 
@@ -1085,11 +1110,11 @@ function renderMessages(c, mode = 'bottom') {
   const prevH = area.scrollHeight, prevTop = area.scrollTop;
   const frag = document.createDocumentFragment();
 
-  if (c.loading && c.loaded) frag.appendChild(emptyNote('Purane messages load ho rahe hain…'));
-  else if (c.liveExhausted && c.archiveDone && c.messages.length) frag.appendChild(emptyNote('— Conversation ki shuruaat —'));
+  if (c.loading && c.loaded) frag.appendChild(emptyNote('Loading messages…'));
+  else if (c.liveExhausted && c.archiveDone && c.messages.length) frag.appendChild(emptyNote('Start of conversation'));
 
   if (!c.messages.length && c.loaded && !c.loading) {
-    frag.appendChild(emptyNote(c.liveExhausted && c.archiveDone ? 'Abhi koi message nahi. Pehla message bhejo 👋' : 'Purane messages ke liye upar scroll karo'));
+    frag.appendChild(emptyNote(c.liveExhausted && c.archiveDone ? 'No messages yet. Send the first message' : 'Scroll up to view older messages.'));
   }
 
   let lastDay = '';
@@ -1135,7 +1160,7 @@ async function openConv(id) {
   const c = S.convs.get(id);
   if (!c) return;
   if (S.attachmentSending && S.current !== id) {
-    toast('Pehle selected files send hone dein', 'fa-triangle-exclamation');
+    toast('Wait for the selected files to finish sending.', 'fa-triangle-exclamation');
     return;
   }
   if (S.attachmentDraft.length && S.attachmentDraftConversationId !== id) clearAttachmentDraft();
@@ -1152,16 +1177,16 @@ async function openConv(id) {
     return;
   }
   if (!c.loaded) {
-    $('messagesArea').replaceChildren(emptyNote('Loading…'));
+    $('messagesArea').replaceChildren(emptyNote('Loading messages...'));
     try { await loadInitial(c); }
-    catch (e) { console.error(e); $('messagesArea').replaceChildren(emptyNote('Messages load nahi hue.')); return; }
+    catch (e) { console.error(e); $('messagesArea').replaceChildren(emptyNote('Unable to load messages.')); return; }
   }
   if (S.current !== id) return;
   renderMessages(c, 'bottom');
   if (pendingResourceShare && S.priv && (c.isGroup || !S.blocked.has(c.other.id)) && !(c.status === 'pending' && c.requestedBy !== S.me)) {
     $('msgInput').value = pendingResourceShare;
     pendingResourceShare = '';
-    toast('Notes link ready hai. Send se pehle review kar lo.', 'fa-link');
+    toast('The notes link is ready. Review it before sending.', 'fa-link');
   }
   await recordReceived(c, c.messages, true);
   // Refresh may update receipt state after the first render; redraw so the
@@ -1173,12 +1198,13 @@ async function openConv(id) {
 /* ====================== sending ====================== */
 function messageExcerpt(m) {
   if (!m) return 'Message';
+  if (m._p?._err) return 'Message unavailable';
   if (m.deleted_at || m._p?.t === 'deleted') return 'This message was deleted';
   const payload = m._p || {};
   if (payload.t === 'file') {
     const file = payload.file || {};
     const kind = (file.mime || '').startsWith('image/') ? 'Photo' : file.mime === 'application/pdf' ? 'PDF' : 'Attachment';
-    return file.name ? `${kind} · ${file.name}` : kind;
+    return file.name ? `${kind} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ${file.name}` : kind;
   }
   return String(payload.text || 'Message').replace(/\s+/g, ' ').trim().slice(0, 140);
 }
@@ -1231,7 +1257,7 @@ function jumpToReply(c, messageId) {
   const row = message && [...$('messagesArea').querySelectorAll('.msg-row')]
     .find((item) => item.dataset.messageId === messageId);
   if (!row) {
-    toast('Original message abhi loaded history mein nahi hai; quoted text upar dikh raha hai.', 'fa-message');
+    toast('The original message is not in the loaded history. The quoted text is shown above.', 'fa-message');
     return;
   }
   row.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1240,10 +1266,10 @@ function jumpToReply(c, messageId) {
 }
 
 function sendErrorMessage(e) {
-  if (e?.message === 'NO_LOCAL_KEY') return 'Chat locked: pehle Security Keyword se Unlock karo.';
-  if (e?.message === 'NO_PEER_KEY') return 'Is user ne abhi encryption keys set nahi ki.';
-  if (e?.code === '42501') return 'Message nahi bheja ja saka (request pending limit ya block).';
-  return 'Message nahi gaya: ' + (e?.message || 'unknown error');
+  if (e?.message === 'NO_LOCAL_KEY') return 'Chat locked: unlock it with your Security Keyword.';
+  if (e?.message === 'NO_PEER_KEY') return 'This user has not set up encryption keys yet.';
+  if (e?.code === '42501') return 'Message could not be sent. The request may be pending, or this user may be blocked.';
+  return 'Message could not be sent: ' + (e?.message || 'Unknown error');
 }
 
 async function sendPayload(c, payload) {
@@ -1261,6 +1287,7 @@ async function sendPayload(c, payload) {
   c.lastAt = data.created_at;
   renderListsSoon();
   if (S.current === c.id) renderMessages(c, 'bottom');
+  void archiveOverflow(c);
 }
 
 async function sendText() {
@@ -1294,20 +1321,102 @@ async function uploadToCloudinary(blob) {
   return (await r.json()).secure_url;
 }
 
+async function uploadArchiveToCloudinary(messages) {
+  const archive = new Blob([JSON.stringify({ messages })], { type: 'application/json' });
+  const fd = new FormData();
+  fd.append('file', archive, `chat-archive-${Date.now()}.json`);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/raw/upload`, {
+    method: 'POST', body: fd
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    let detail = response.headers.get('X-Cld-Error') || '';
+    try { detail ||= JSON.parse(body)?.error?.message || ''; } catch { /* response may not be JSON */ }
+    throw new Error('Chat archive upload failed (' + response.status + ')' + (detail ? ': ' + detail : ''));
+  }
+  const result = await response.json();
+  if (!result.secure_url) throw new Error('Cloudinary did not return a secure archive URL.');
+  return result.secure_url;
+}
+
+async function archiveOverflow(c) {
+  if (!c || !CLOUDINARY_CLOUD || CLOUDINARY_CLOUD.startsWith('YOUR')) return;
+  if (archivingConversations.has(c.id)) { pendingArchiveChecks.add(c.id); return; }
+  archivingConversations.add(c.id);
+  let updated = false;
+  try {
+    while (true) {
+      const cutoff = new Date(Date.now() - CHAT_ARCHIVE_AGE_MS).toISOString();
+      let recentQuery = supabase.from('messages').select('id').eq('conversation_id', c.id)
+        .order('created_at', { ascending: false }).order('id', { ascending: false })
+        .limit(CHAT_ARCHIVE_KEEP_RECENT);
+      if (c.isGroup && c.myJoinedAt) recentQuery = recentQuery.gte('created_at', c.myJoinedAt);
+      const { data: recentMessages, error: recentError } = await recentQuery;
+      if (recentError) throw recentError;
+      const recentIds = (recentMessages || []).map((message) => message.id);
+      if (recentIds.length < CHAT_ARCHIVE_KEEP_RECENT) break;
+
+      let query = supabase.from('messages').select('*').eq('conversation_id', c.id)
+        .lt('created_at', cutoff).not('id', 'in', `(${recentIds.join(',')})`)
+        .order('created_at', { ascending: true }).order('id', { ascending: true })
+        .limit(CHAT_ARCHIVE_BATCH_SIZE);
+      if (c.isGroup && c.myJoinedAt) query = query.gte('created_at', c.myJoinedAt);
+      const { data: messages, error: selectError } = await query;
+      if (selectError) throw selectError;
+      if (!(messages || []).length) break;
+
+      // Preserve a small live window; never delete until Cloudinary has accepted
+      // the archive and Supabase has committed its index row.
+      const url = await uploadArchiveToCloudinary(messages);
+      const { data: archiveResult, error: archiveError } = await supabase.functions.invoke('archive-chat', {
+        body: {
+          p_conversation_id: c.id,
+          p_message_ids: messages.map((message) => message.id),
+          p_url: url,
+          p_archive_date: messages[0].created_at.slice(0, 10),
+          p_cutoff: cutoff
+        }
+      });
+      if (archiveError) throw archiveError;
+      const archivedCount = Number(archiveResult?.archived_count) || 0;
+      if (!archivedCount) break;
+
+      const archivedIds = new Set(messages.map((message) => message.id));
+      c.messages.forEach((message) => { if (archivedIds.has(message.id)) message.archived = true; });
+      updated = true;
+      c.archiveFiles = null;
+      c.archiveIdx = 0;
+      c.archiveDone = false;
+      archiveWarnings.delete(c.id);
+    }
+  } catch (error) {
+    console.error('Chat archive failed:', error?.message || error, error);
+    if (!archiveWarnings.has(c.id)) {
+      archiveWarnings.add(c.id);
+      toast('Chat history could not be archived. Check the archive setup and try again.', 'fa-triangle-exclamation');
+    }
+  } finally {
+    archivingConversations.delete(c.id);
+    if (updated && S.current === c.id) renderMessages(c, 'stay');
+    if (pendingArchiveChecks.delete(c.id)) queueMicrotask(() => archiveOverflow(c));
+  }
+}
+
 async function sendAttachment(file, conversation = cur(), replyTo = undefined, caption = '') {
   const c = conversation;
   if (!c || !file) return false;
   if (!(file.type.startsWith('image/') || file.type === 'application/pdf')) {
-    toast(`${file.name}: sirf images aur PDF bhej sakte ho`, 'fa-triangle-exclamation'); return false;
+    toast(`${file.name}: only images and PDFs can be sent.`, 'fa-triangle-exclamation'); return false;
   }
   if (file.size > MAX_FILE_BYTES) {
-    toast(`${file.name}: ${formatSize(MAX_FILE_BYTES)} se badi hai`, 'fa-triangle-exclamation'); return false;
+    toast(`${file.name}: exceeds the ${formatSize(MAX_FILE_BYTES)} size limit.`, 'fa-triangle-exclamation'); return false;
   }
   if (!CLOUDINARY_CLOUD || CLOUDINARY_CLOUD.startsWith('YOUR')) {
-    toast('chat-config.js me Cloudinary details daalo', 'fa-triangle-exclamation'); return false;
+    toast('Add your Cloudinary credentials to chat-config.js.', 'fa-triangle-exclamation'); return false;
   }
   const messageReply = replyTo === undefined ? replyDescriptorFor(c) : replyTo;
-  toast('Encrypt + upload ho raha hai…', 'fa-spinner');
+  toast('Encrypting and uploadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦', 'fa-spinner');
   try {
     const enc = await encryptFile(file);
     const url = await uploadToCloudinary(enc.blob);
@@ -1316,7 +1425,7 @@ async function sendAttachment(file, conversation = cur(), replyTo = undefined, c
       file: { url, key: enc.key, iv: enc.iv, name: file.name, size: file.size, mime: file.type },
       ...(messageReply ? { replyTo: messageReply } : {})
     });
-    toast(`${file.name} bhej di`);
+    toast(`${file.name} sent.`);
     return true;
   } catch (e) { toast(sendErrorMessage(e), 'fa-triangle-exclamation'); return false; }
 }
@@ -1370,7 +1479,7 @@ function addAttachmentDraft(files) {
   const c = cur();
   if (!c || !files?.length) return;
   if (S.attachmentSending) {
-    toast('Upload chal raha hai. Iske baad files add karein.', 'fa-triangle-exclamation');
+    toast('An upload is in progress. Add more files after it finishes.', 'fa-triangle-exclamation');
     return;
   }
   if (S.attachmentDraftConversationId && S.attachmentDraftConversationId !== c.id) clearAttachmentDraft();
@@ -1483,7 +1592,7 @@ async function onConvChange(row, isInsert) {
   }
   const known = S.convs.has(row.id);
   const c = upsertConv(row, profs, members);
-  if (isInsert && !known && !row.is_group && row.requested_by !== S.me) toast('Naya message request: ' + c.other.full_name, 'fa-user-plus');
+  if (isInsert && !known && !row.is_group && row.requested_by !== S.me) toast('New message request: ' + c.other.full_name, 'fa-user-plus');
   renderLists();
   if (S.current === c.id) renderChatWindow();
 }
@@ -1515,14 +1624,11 @@ async function onNewMessage(m) {
     } else {
       await recordReceived(c, [m], false);
       c.unread++;
-      const senderName = c.isGroup
-        ? (c.members.find((member) => member.id === m.sender_id)?.full_name || 'Group member')
-        : c.other.full_name;
-      if (!muted.has(c.id)) toast(senderName + ': ' + (previewOf(m).slice(0, 40)), 'fa-message');
     }
   } else if (S.current === c.id) {
     renderMessages(c, 'bottom');
   }
+  void archiveOverflow(c);
   renderLists();
 }
 
@@ -1611,7 +1717,7 @@ async function toggleBlock(c) {
 }
 
 async function clearChat(c) {
-  if (!confirm('Is chat ke saare messages sirf tumhare liye clear ho jayenge. Contact bana rahega. Continue?')) return;
+  if (!await portalConfirm('This clears all messages in the chat for you only. The contact will remain. Continue?', { danger: true, confirmText: 'Clear chat' })) return;
   const { error } = await supabase.rpc('clear_chat', { p_conv: c.id });
   if (error) { toast(error.message, 'fa-triangle-exclamation'); return; }
   c.clearedBefore = new Date().toISOString();
@@ -1623,7 +1729,7 @@ async function clearChat(c) {
 }
 
 async function reportChat(c) {
-  if (!confirm('Report karne par is chat ke last 5 messages (decrypted) moderators ko bheje jayenge. Continue?')) return;
+  if (!await portalConfirm('Reporting will send the last five decrypted messages in this chat to the moderators. Continue?', { confirmText: 'Send report' })) return;
   const evidence = c.messages.slice(-5).map((m) => ({
     from: m.sender_id === S.me ? 'reporter' : 'reported',
     at: m.created_at,
@@ -1632,7 +1738,7 @@ async function reportChat(c) {
   const { error } = await supabase.from('reports').insert({
     reporter: S.me, reported_user: c.other.id, conversation_id: c.id, evidence
   });
-  toast(error ? 'Report submit nahi hui' : 'Report submit ho gayi. Team review karegi.', error ? 'fa-triangle-exclamation' : 'fa-flag');
+  toast(error ? 'Unable to submit report.' : 'Report submitted. The team will review it.', error ? 'fa-triangle-exclamation' : 'fa-flag');
 }
 
 /* ====================== new chat modal ====================== */
@@ -1642,17 +1748,17 @@ const selectedGroupMembers = new Map();
 async function searchPeople(raw) {
   const list = $('ncFriendList');
   const q = sanitizeQ(raw);
-  if (q.length < 2) { list.replaceChildren(emptyNote('Naam ya roll number ke kam se kam 2 letters likho')); return; }
+  if (q.length < 2) { list.replaceChildren(emptyNote('Enter at least two letters of a name or roll number.')); return; }
   const { data, error } = await supabase.from('profiles')
     .select('id,full_name,roll_no,branch,year,public_key')
     .neq('id', S.me)
     .or(`full_name.ilike.%${q}%,roll_no.ilike.%${q}%`).limit(20);
   if (error) { list.replaceChildren(emptyNote('Search fail: ' + error.message)); return; }
-  if (!data.length) { list.replaceChildren(emptyNote('Koi student nahi mila')); return; }
+  if (!data.length) { list.replaceChildren(emptyNote('No students found.')); return; }
   list.innerHTML = data.map((p) => `
     <div class="friend-suggestion-item" data-id="${esc(p.id)}">
       <div class="av ${colorFor(p.id)}">${esc(initialsOf(p.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' · ' + esc(p.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(p.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-check"></i></div>
     </div>`).join('');
   list._results = new Map(data.map((p) => [p.id, p]));
@@ -1677,7 +1783,7 @@ function renderGroupSearchResults() {
   list.innerHTML = [...results.values()].map((p) => `
     <div class="friend-suggestion-item${selectedGroupMembers.has(p.id) ? ' selected' : ''}" data-group-id="${esc(p.id)}">
       <div class="av ${colorFor(p.id)}">${esc(initialsOf(p.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' · ' + esc(p.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(p.full_name)}</strong><span>${esc(p.roll_no || '')}${p.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(p.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-check"></i></div>
     </div>`).join('');
 }
@@ -1685,22 +1791,22 @@ function renderGroupSearchResults() {
 async function searchGroupPeople(raw) {
   const list = $('groupFriendList');
   const q = sanitizeQ(raw);
-  if (q.length < 2) { list._results = new Map(); list.replaceChildren(emptyNote('Members search karne ke liye naam likho.')); return; }
+  if (q.length < 2) { list._results = new Map(); list.replaceChildren(emptyNote('Enter a name to search for members.')); return; }
   const { data, error } = await supabase.from('profiles')
     .select('id,full_name,roll_no,branch,year,public_key').neq('id', S.me)
     .not('public_key', 'is', null).or(`full_name.ilike.%${q}%,roll_no.ilike.%${q}%`).limit(30);
   if (error) { list._results = new Map(); list.replaceChildren(emptyNote('Members search fail: ' + error.message)); return; }
   list._results = new Map((data || []).map((p) => [p.id, p]));
-  if (!list._results.size) { list.replaceChildren(emptyNote('Matching member nahi mila.')); return; }
+  if (!list._results.size) { list.replaceChildren(emptyNote('No matching members found.')); return; }
   renderGroupSearchResults();
 }
 
 async function createGroup() {
   const name = $('groupNameInput').value.trim();
   const memberIds = [...selectedGroupMembers.keys()];
-  if (!S.priv) { toast('Encrypted group banane ke liye pehle chat unlock karo.', 'fa-lock'); return; }
-  if (!name || name.length > 60) { toast('Group name 1 se 60 characters ka rakho.', 'fa-triangle-exclamation'); return; }
-  if (!memberIds.length) { toast('Group mein kam se kam ek member chuno.', 'fa-user-plus'); return; }
+  if (!S.priv) { toast('Unlock the chat before creating an encrypted group.', 'fa-lock'); return; }
+  if (!name || name.length > 60) { toast('Enter a group name between 1 and 60 characters.', 'fa-triangle-exclamation'); return; }
+  if (!memberIds.length) { toast('Select at least one group member.', 'fa-user-plus'); return; }
 
   const button = $('createGroupSubmit'); button.disabled = true;
   try {
@@ -1710,7 +1816,7 @@ async function createGroup() {
     if (createError) throw createError;
     const userIds = [S.me, ...memberIds];
     const profiles = await fetchProfiles(userIds);
-    if (userIds.some((id) => !profiles.get(id)?.public_key)) throw new Error('Group member ki encryption key missing hai.');
+    if (userIds.some((id) => !profiles.get(id)?.public_key)) throw new Error('A group member is missing an encryption key.');
 
     const rawKey = crypto.getRandomValues(new Uint8Array(32));
     const encodedKey = toB64(rawKey);
@@ -1739,16 +1845,16 @@ async function createGroup() {
     selectedGroupMembers.clear();
     $('groupNameInput').value = ''; $('groupSearchInput').value = '';
     $('groupFriendList')._results = new Map();
-    $('groupFriendList').replaceChildren(emptyNote('Members search karne ke liye naam likho.'));
+    $('groupFriendList').replaceChildren(emptyNote('Enter a name to search for members.'));
     renderGroupChips();
     $('createModal').classList.remove('show');
     document.querySelector('.tab-btn[data-tab="groups"]').click();
     renderLists();
     openConv(c.id);
-    toast('Encrypted group create ho gaya', 'fa-users');
+    toast('Encrypted group created.', 'fa-users');
   } catch (error) {
     console.error('Group create failed:', error);
-    toast('Group create nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to create group: ' + (error.message || error), 'fa-triangle-exclamation');
   } finally { button.disabled = false; }
 }
 
@@ -1760,7 +1866,7 @@ function groupAdmin(c) {
 function renderGroupMemberRows(c) {
   const box = $('groupMemberRows');
   if (!c?.members?.length) {
-    box.replaceChildren(emptyNote('Members list load nahi hui.')); return;
+    box.replaceChildren(emptyNote('Unable to load the member list.')); return;
   }
   const members = [...c.members].sort((a, b) => (a.role === 'admin' ? -1 : 1) - (b.role === 'admin' ? -1 : 1)
     || (a.full_name || '').localeCompare(b.full_name || ''));
@@ -1773,7 +1879,7 @@ function renderGroupMemberRows(c) {
     return `<div class="member-row">
       <div class="av ${colorFor(member.id)}">${esc(initialsOf(member.full_name))}</div>
       <div class="m-info"><strong>${esc(member.full_name || 'Unknown member')}${member.id === S.me ? ' (You)' : ''}</strong>
-        <span class="${isAdmin ? 'admin-tag' : ''}">${isAdmin ? 'Admin' : 'Member'}${member.roll_no ? ' · ' + esc(member.roll_no) : ''}</span></div>
+        <span class="${isAdmin ? 'admin-tag' : ''}">${isAdmin ? 'Admin' : 'Member'}${member.roll_no ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(member.roll_no) : ''}</span></div>
       ${controls}
     </div>`;
   }).join('');
@@ -1784,12 +1890,12 @@ function openGroupInfo(c = cur()) {
   if (!c?.isGroup) return;
   $('membersGroupTitle').textContent = c.groupName || 'Group info';
   const isAdmin = groupAdmin(c);
-  $('membersGroupHint').textContent = isAdmin ? 'Admin · members aur group manage karein' : 'Group members aur admin details';
+  membersGroupHint.textContent = isAdmin ? 'Admin Â· manage members and group' : 'Group members and admin details';
   $('groupMemberAddPanel').style.display = isAdmin ? 'block' : 'none';
   $('deleteGroupButton').style.display = isAdmin ? 'inline-flex' : 'none';
   $('groupDeleteNote').style.display = isAdmin ? 'block' : 'none';
   $('groupMemberSearchInput').value = '';
-  $('groupMemberSearchResults').replaceChildren(emptyNote('Naam ya roll number ke 2+ letters type karein.'));
+  $('groupMemberSearchResults').replaceChildren(emptyNote('Enter at least two letters of a name or roll number.'));
   $('groupMemberSearchResults')._results = new Map();
   renderGroupMemberRows(c);
   $('membersModal').classList.add('show');
@@ -1817,9 +1923,9 @@ async function leaveGroup(c = cur()) {
   const remaining = c.members.filter((member) => member.id !== S.me);
   const lastMember = remaining.length === 0;
   const prompt = lastMember
-    ? `Aap ${c.groupName} ke last member ho. Leave karne par group aur Supabase mein uske messages/index delete ho jayenge. Cloudinary ki pehle se bani archive files alag se rahengi. Continue?`
-    : `"${c.groupName}" se leave karna hai? Bache hue members ke liye future messages ki encryption key rotate hogi. Aapke paas pehle se aaye messages ki copies reh sakti hain.`;
-  if (!confirm(prompt)) return;
+    ? `You are the last member of ${c.groupName}. Leaving will delete the group and its messages and archive index from Supabase. Existing Cloudinary archive files will remain. Continue?`
+    : `Leave "${c.groupName}"? The encryption key for future messages will be rotated for the remaining members. Copies of messages you already received may remain available to you.`;
+  if (!await portalConfirm(prompt, { danger: true, confirmText: 'Leave group' })) return;
 
   const button = $('leaveGroupButton');
   button.disabled = true;
@@ -1827,12 +1933,12 @@ async function leaveGroup(c = cur()) {
     let userIds = [], ciphertexts = [], ivs = [];
     const currentVersion = c.groupKeyVersion;
     if (!lastMember) {
-      if (!S.priv) throw new Error('Group leave karne se pehle chat unlock karo, taaki remaining members ki key rotate ho sake.');
+      if (!S.priv) throw new Error('Unlock the chat before leaving so the encryption key can be rotated for the remaining members.');
       const rawKey = crypto.getRandomValues(new Uint8Array(32));
       const encodedKey = toB64(rawKey);
       userIds = remaining.map((member) => member.id);
       for (const member of remaining) {
-        if (!member.public_key) throw new Error(`${member.full_name} ki encryption key missing hai.`);
+        if (!member.public_key) throw new Error(`${member.full_name} is missing an encryption key.`);
         const wrappingKey = await getConversationKey(`${c.id}:group`, S.priv, member.public_key);
         const envelope = await encryptPayload(wrappingKey, { t: 'group-key', key: encodedKey });
         ciphertexts.push(envelope.ciphertext); ivs.push(envelope.iv);
@@ -1848,17 +1954,17 @@ async function leaveGroup(c = cur()) {
     });
     if (error) throw error;
     forgetGroupLocally(c);
-    toast(lastMember ? 'Last member leave hua; group delete ho gaya.' : 'Aap group se leave ho gaye; remaining members ki key rotate ho gayi.', 'fa-right-from-bracket');
+    toast(lastMember ? 'You left as the last member. The group was deleted.' : 'You left the group. The encryption key was rotated for the remaining members.', 'fa-right-from-bracket');
   } catch (error) {
     console.error('Leave group failed:', error);
-    toast('Group leave nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to leave group: ' + (error.message || error), 'fa-triangle-exclamation');
   } finally { pendingGroupExitIds.delete(c.id); button.disabled = false; }
 }
 
 async function deleteGroup(c = cur()) {
   if (!c?.isGroup || !groupAdmin(c)) return;
-  const prompt = `"${c.groupName}" ko sabke liye permanently delete karein? Supabase ke live messages aur archive index delete honge. Cloudinary ki pehle se bani backup files is action se remove nahi hongi.`;
-  if (!confirm(prompt)) return;
+  const prompt = `Permanently delete "${c.groupName}" for everyone? Its live messages and archive index will be deleted from Supabase. Existing Cloudinary backup files will remain.`;
+  if (!await portalConfirm(prompt, { danger: true, confirmText: 'Delete group' })) return;
   const button = $('deleteGroupButton');
   button.disabled = true;
   try {
@@ -1866,10 +1972,10 @@ async function deleteGroup(c = cur()) {
     const { error } = await supabase.rpc('delete_group', { p_conversation_id: c.id });
     if (error) throw error;
     forgetGroupLocally(c);
-    toast('Group aur Supabase ka chat data delete ho gaya.', 'fa-trash-can');
+    toast('The group and its chat data were deleted from Supabase.', 'fa-trash-can');
   } catch (error) {
     console.error('Delete group failed:', error);
-    toast('Group delete nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to delete group: ' + (error.message || error), 'fa-triangle-exclamation');
   } finally { pendingGroupExitIds.delete(c.id); button.disabled = false; }
 }
 
@@ -1894,7 +2000,7 @@ async function searchGroupAddPeople(raw) {
   const q = sanitizeQ(raw);
   if (!c?.isGroup || !groupAdmin(c)) return;
   if (q.length < 2) {
-    list._results = new Map(); list.replaceChildren(emptyNote('Naam ya roll number ke 2+ letters type karein.')); return;
+    list._results = new Map(); list.replaceChildren(emptyNote('Enter at least two letters of a name or roll number.')); return;
   }
   const { data, error } = await supabase.from('profiles')
     .select('id,full_name,roll_no,branch,year,public_key').neq('id', S.me)
@@ -1902,26 +2008,26 @@ async function searchGroupAddPeople(raw) {
   if (error) { list._results = new Map(); list.replaceChildren(emptyNote('Search fail: ' + error.message)); return; }
   const existing = new Set(c.members.map((member) => member.id));
   list._results = new Map((data || []).filter((profile) => !existing.has(profile.id)).map((profile) => [profile.id, profile]));
-  if (!list._results.size) { list.replaceChildren(emptyNote('Naya matching member nahi mila.')); return; }
+  if (!list._results.size) { list.replaceChildren(emptyNote('No new matching members found.')); return; }
   list.innerHTML = [...list._results.values()].map((profile) => `
     <div class="friend-suggestion-item" data-add-group-member="${esc(profile.id)}">
       <div class="av ${colorFor(profile.id)}">${esc(initialsOf(profile.full_name))}</div>
-      <div class="f-name-wrap"><strong>${esc(profile.full_name)}</strong><span>${esc(profile.roll_no || '')}${profile.branch ? ' · ' + esc(profile.branch) : ''}</span></div>
+      <div class="f-name-wrap"><strong>${esc(profile.full_name)}</strong><span>${esc(profile.roll_no || '')}${profile.branch ? ' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ' + esc(profile.branch) : ''}</span></div>
       <div class="select-check"><i class="fas fa-plus"></i></div>
     </div>`).join('');
 }
 
 async function addGroupMember(c, profile) {
-  if (!groupAdmin(c) || !S.priv) { toast('Member add karne ke liye admin login aur chat unlock zaroori hai.', 'fa-lock'); return; }
-  if (c.members.length >= 100) { toast('Group mein maximum 100 members ho sakte hain.', 'fa-triangle-exclamation'); return; }
+  if (!groupAdmin(c) || !S.priv) { toast('Sign in as a group admin and unlock the chat to add members.', 'fa-lock'); return; }
+  if (c.members.length >= 100) { toast('Groups can have a maximum of 100 members.', 'fa-triangle-exclamation'); return; }
   const list = $('groupMemberSearchResults');
   list.style.pointerEvents = 'none'; list.style.opacity = '.55';
   try {
     const keyVersion = c.groupKeyVersion;
     await keyFor(c, keyVersion);
     const rawKey = c.groupKeyRaws.get(keyVersion);
-    if (!rawKey) throw new Error('Group key available nahi. Chat ko reload karke try karo.');
-    if (!profile.public_key) throw new Error('Is member ki encryption key set nahi hai.');
+    if (!rawKey) throw new Error('The group key is unavailable. Reload the chat and try again.');
+    if (!profile.public_key) throw new Error('This member has not set up an encryption key.');
     const wrappingKey = await getConversationKey(`${c.id}:group`, S.priv, profile.public_key);
     const envelope = await encryptPayload(wrappingKey, { t: 'group-key', key: toB64(rawKey) });
     const { error } = await supabase.rpc('add_group_member_with_key', {
@@ -1932,20 +2038,20 @@ async function addGroupMember(c, profile) {
     await refreshGroupMembers(c);
     renderGroupMemberRows(c); renderChatWindow(); renderLists();
     $('groupMemberSearchInput').value = '';
-    list.replaceChildren(emptyNote('Member add ho gaya. Kisi aur ko search karo.'));
+    list.replaceChildren(emptyNote('Member added. Search for another member.'));
     list._results = new Map();
-    toast(`${profile.full_name} group mein add ho gaya`, 'fa-user-plus');
+    toast(`${profile.full_name} was added to the group.`, 'fa-user-plus');
   } catch (error) {
     console.error('Add group member failed:', error);
-    toast('Member add nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to add member: ' + (error.message || error), 'fa-triangle-exclamation');
   } finally { list.style.pointerEvents = ''; list.style.opacity = ''; }
 }
 
 async function removeGroupMember(c, memberId) {
-  if (!groupAdmin(c) || !S.priv) { toast('Sirf unlocked group admin member remove kar sakta hai.', 'fa-lock'); return; }
+  if (!groupAdmin(c) || !S.priv) { toast('Only an unlocked group admin can remove members.', 'fa-lock'); return; }
   const member = c.members.find((item) => item.id === memberId);
   if (!member || member.role === 'admin') return;
-  if (!confirm(`${member.full_name} ko group se remove karein? Aage ke messages ke liye group encryption key badlegi.`)) return;
+  if (!await portalConfirm(`Remove ${member.full_name} from the group? The group encryption key will be rotated for future messages.`, { danger: true, confirmText: 'Remove member' })) return;
   const box = $('groupMemberRows'); box.style.pointerEvents = 'none'; box.style.opacity = '.55';
   try {
     const currentVersion = c.groupKeyVersion;
@@ -1956,7 +2062,7 @@ async function removeGroupMember(c, memberId) {
     const userIds = remaining.map((item) => item.id);
     const ciphertexts = [], ivs = [];
     for (const recipient of remaining) {
-      if (!recipient.public_key) throw new Error(`${recipient.full_name} ki encryption key missing hai.`);
+      if (!recipient.public_key) throw new Error(`${recipient.full_name} is missing an encryption key.`);
       const wrappingKey = await getConversationKey(`${c.id}:group`, S.priv, recipient.public_key);
       const envelope = await encryptPayload(wrappingKey, { t: 'group-key', key: encodedKey });
       ciphertexts.push(envelope.ciphertext); ivs.push(envelope.iv);
@@ -1975,10 +2081,10 @@ async function removeGroupMember(c, memberId) {
     c.groupKey = c.groupKeys.get(nextVersion);
     await refreshGroupMembers(c);
     renderGroupMemberRows(c); renderChatWindow(); renderLists();
-    toast(`${member.full_name} remove ho gaya; new messages ki key rotate kar di`, 'fa-user-minus');
+    toast(`${member.full_name} was removed. The key for new messages was rotated.`, 'fa-user-minus');
   } catch (error) {
     console.error('Remove group member failed:', error);
-    toast('Member remove nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to remove member: ' + (error.message || error), 'fa-triangle-exclamation');
   } finally { box.style.pointerEvents = ''; box.style.opacity = ''; }
 }
 
@@ -1994,7 +2100,7 @@ async function setGroupMemberRole(c, memberId, role) {
     const member = c.members.find((item) => item.id === memberId);
     toast(`${member?.full_name || 'Member'} ko ${role === 'admin' ? 'admin' : 'member'} bana diya`, 'fa-user-shield');
   } catch (error) {
-    toast('Role update nahi hua: ' + (error.message || error), 'fa-triangle-exclamation');
+    toast('Unable to update role: ' + (error.message || error), 'fa-triangle-exclamation');
   }
 }
 
@@ -2015,7 +2121,7 @@ async function onGroupMembersChange(payload) {
       const { data: conversation } = await supabase.from('conversations').select('id').eq('id', c.id).maybeSingle();
       const localExit = pendingGroupExitIds.has(c.id);
       forgetGroupLocally(c);
-      if (!localExit) toast(conversation ? 'Aapko group se remove kar diya gaya.' : 'Group admin ne group delete kar diya.', conversation ? 'fa-user-minus' : 'fa-trash-can');
+      if (!localExit) toast(conversation ? 'You were removed from the group.' : 'The group admin deleted the group.', conversation ? 'fa-user-minus' : 'fa-trash-can');
       return;
     }
     renderLists();
@@ -2024,7 +2130,7 @@ async function onGroupMembersChange(payload) {
       if ($('membersModal').classList.contains('show')) {
         $('groupMemberAddPanel').style.display = groupAdmin(c) ? 'block' : 'none';
         const isAdmin = groupAdmin(c);
-        $('membersGroupHint').textContent = isAdmin ? 'Admin · members aur group manage karein' : 'Group members aur admin details';
+  membersGroupHint.textContent = isAdmin ? 'Admin Â· manage members and group' : 'Group members and admin details';
         $('deleteGroupButton').style.display = isAdmin ? 'inline-flex' : 'none';
         $('groupDeleteNote').style.display = isAdmin ? 'block' : 'none';
         renderGroupMemberRows(c);
@@ -2039,7 +2145,7 @@ function onConversationDelete(payload) {
   if (!c?.isGroup) return;
   const localExit = pendingGroupExitIds.has(id);
   forgetGroupLocally(c);
-  if (!localExit) toast('Group admin ne group delete kar diya.', 'fa-trash-can');
+  if (!localExit) toast('The group admin deleted the group.', 'fa-trash-can');
 }
 
 async function startChatWith(profile) {
@@ -2047,13 +2153,13 @@ async function startChatWith(profile) {
   if (error) { toast(error.message, 'fa-triangle-exclamation'); return; }
   const { data: row } = await supabase.from('conversations').select('*').eq('id', cid).single();
   const c = upsertConv(row, new Map([[profile.id, profile]]));
-  if (c.status === 'rejected') { toast('Ye request pehle decline ho chuki hai', 'fa-ban'); return; }
+  if (c.status === 'rejected') { toast('This request has already been declined.', 'fa-ban'); return; }
   $('createModal').classList.remove('show');
   const incoming = c.status === 'pending' && c.requestedBy !== S.me;
   document.querySelector(`.tab-btn[data-tab="${incoming ? 'requests' : 'chats'}"]`).click();
   renderLists();
   openConv(c.id);
-  if (!incoming && c.status === 'pending' && !c.loaded) toast('Request bhej di. Accept hone tak 3 messages bhej sakte ho.', 'fa-paper-plane');
+  if (!incoming && c.status === 'pending' && !c.loaded) toast('Request sent. You can send up to three messages while you wait for acceptance.', 'fa-paper-plane');
 }
 
 /* ====================== wiring ====================== */
@@ -2216,22 +2322,44 @@ function wireUI() {
     $('createPane-group').style.display = tab === 'group' ? 'block' : 'none';
   };
   document.querySelectorAll('.create-tab-btn').forEach((button) => button.addEventListener('click', () => selectCreatePane(button.dataset.ctab)));
-  $('newChatBtn').addEventListener('click', () => {
-    selectCreatePane('chat');
-    $('ncSearch').value = '';
-    $('ncFriendList').replaceChildren(emptyNote('Naam ya roll number ke kam se kam 2 letters likho'));
-    $('createModal').classList.add('show');
-    setTimeout(() => $('ncSearch').focus(), 50);
-  });
-  $('groupCreateButton').addEventListener('click', () => {
-    selectCreatePane('group');
+  const closeMobileCreateMenu = () => {
+    $('mobileCreateActions').classList.remove('show');
+    $('mobileCreateActions').setAttribute('aria-hidden', 'true');
+    $('mobileCreateFab').setAttribute('aria-expanded', 'false');
+  };
+  const openCreateModal = (tab) => {
+    closeMobileCreateMenu();
+    selectCreatePane(tab);
+    if (tab === 'chat') {
+      $('ncSearch').value = '';
+      $('ncFriendList').replaceChildren(emptyNote('Enter at least two letters of a name or roll number.'));
+      $('createModal').classList.add('show');
+      setTimeout(() => $('ncSearch').focus(), 50);
+      return;
+    }
     $('groupSearchInput').value = '';
     $('groupNameInput').value = '';
     selectedGroupMembers.clear(); renderGroupChips();
     $('groupFriendList')._results = new Map();
-    $('groupFriendList').replaceChildren(emptyNote('Members search karne ke liye naam likho.'));
+    $('groupFriendList').replaceChildren(emptyNote('Enter a name to search for members.'));
     $('createModal').classList.add('show');
     setTimeout(() => $('groupNameInput').focus(), 50);
+  };
+  $('newChatBtn').addEventListener('click', () => openCreateModal('chat'));
+  $('groupCreateButton').addEventListener('click', () => openCreateModal('group'));
+  $('mobileCreateFab').addEventListener('click', (event) => {
+    event.stopPropagation();
+    const opening = !$('mobileCreateActions').classList.contains('show');
+    $('mobileCreateActions').classList.toggle('show', opening);
+    $('mobileCreateActions').setAttribute('aria-hidden', String(!opening));
+    $('mobileCreateFab').setAttribute('aria-expanded', String(opening));
+  });
+  $('mobileCreateActions').addEventListener('click', (event) => {
+    const action = event.target.closest('[data-mobile-create]')?.dataset.mobileCreate;
+    if (action) openCreateModal(action);
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#mobileCreateFab, #mobileCreateActions')) closeMobileCreateMenu();
   });
   $('closeCreateModal').addEventListener('click', () => $('createModal').classList.remove('show'));
   $('createModal').addEventListener('click', (e) => { if (e.target === $('createModal')) $('createModal').classList.remove('show'); });
@@ -2249,7 +2377,7 @@ function wireUI() {
     if (!profile) return;
     if (selectedGroupMembers.has(profile.id)) selectedGroupMembers.delete(profile.id);
     else if (selectedGroupMembers.size < 99) selectedGroupMembers.set(profile.id, profile);
-    else toast('Group mein maximum 100 members rakh sakte ho.', 'fa-triangle-exclamation');
+    else toast('Groups can have a maximum of 100 members.', 'fa-triangle-exclamation');
     renderGroupChips(); renderGroupSearchResults();
   });
   $('createGroupSubmit').addEventListener('click', createGroup);
@@ -2273,7 +2401,12 @@ async function init(userId) {
   renderLists();
   renderChatWindow();
   subscribeRealtime();
-  if (!S.priv) toast('Chat locked: Unlock karne ke liye chat kholo', 'fa-lock');
+  const checkArchives = () => S.convs.forEach((conversation) => { void archiveOverflow(conversation); });
+  window.setInterval(checkArchives, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkArchives();
+  });
+  if (!S.priv) toast('Chat locked: open it to unlock.', 'fa-lock');
   loadPreviews().then(renderLists).catch(() => {});
 }
 

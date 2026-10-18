@@ -16,6 +16,7 @@ const unb64 = (s)   => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 /* ---------------- IndexedDB (local private key store) ---------------- */
 const DB_NAME = 'mgm_e2ee';
 const STORE   = 'keys';
+const REMEMBER_KEY_PREFIX = 'mgm_e2ee_remember_';
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -36,9 +37,37 @@ async function idbRun(mode, fn) {
   });
 }
 
-export const getLocalPrivateKey  = (uid)      => idbRun('readonly',  (s) => s.get(`priv:${uid}`));
+export function isLocalKeyRemembered(uid) {
+  try {
+    const preference = localStorage.getItem(`${REMEMBER_KEY_PREFIX}${uid}`);
+    // Existing signed-in devices keep their current behavior until the user
+    // next chooses Remember this device on the login page.
+    return preference !== '0';
+  } catch { return true; }
+}
+
+export async function setLocalKeyRemembered(uid, remember) {
+  try { localStorage.setItem(`${REMEMBER_KEY_PREFIX}${uid}`, remember ? '1' : '0'); } catch { /* ignore */ }
+  if (!remember) {
+    try { await wipeLocalKeys(uid); } catch { /* the current page still has its in-memory key */ }
+  }
+}
+
+async function readRememberedKey(uid) {
+  if (!isLocalKeyRemembered(uid)) return null;
+  const stored = await idbRun('readonly', (s) => s.get(`priv:${uid}`));
+  if (!stored) return null;
+  // Accept the original CryptoKey format and records written during the
+  // temporary expiry implementation, without expiring remembered devices.
+  return stored.key || stored;
+}
+
+export async function getLocalPrivateKey(uid) {
+  return (await readRememberedKey(uid)) || null;
+}
+
 export const saveLocalPrivateKey = async (uid, key) => {
-  // Browser ko ye data apne aap hatane se roko (taaki baar-baar unlock na karna pade)
+  // Remember the chat key on this browser/device until the user opts out.
   try { await navigator.storage?.persist?.(); } catch { /* ignore */ }
   return idbRun('readwrite', (s) => s.put(key, `priv:${uid}`));
 };

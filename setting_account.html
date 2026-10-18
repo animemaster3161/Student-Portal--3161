@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Portal | Settings & Configuration</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -43,6 +44,14 @@
 
         --sidebar-width: 272px;
         --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+
+    html.portal-dark-mode {
+        color-scheme: dark;
+        --bg-base:#0B1220; --surface:#141F31; --surface-alt:#1B2A40;
+        --ink:#E7EDF7; --ink-soft:#B1BED2; --ink-faint:#8594AB;
+        --border:rgba(210,225,245,.12); --blue-wash:rgba(108,147,255,.16);
+        --danger-wash:rgba(225,74,59,.16);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -116,7 +125,9 @@ html{overflow-x:hidden;max-width:100vw;}
     .profile-mini .avatar {
         width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
         display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0;
+        overflow: hidden;
     }
+    .profile-mini .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
     .profile-mini .info { flex: 1; min-width: 0; }
     .profile-mini .info strong { display: block; font-size: 13px; color: #fff; font-weight: 600; }
     .profile-mini .info span { font-size: 11.5px; color: rgba(255,255,255,0.42); font-family: 'JetBrains Mono', monospace; }
@@ -177,6 +188,7 @@ html{overflow-x:hidden;max-width:100vw;}
     .config-row:last-child { border-bottom: none; }
     .config-info h4 { font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
     .config-info p { font-size: 12.5px; color: var(--ink-soft); }
+    .notification-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     
     .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; display: inline-block; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -191,7 +203,9 @@ html{overflow-x:hidden;max-width:100vw;}
         width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(145deg, var(--cyan-light), var(--cyan));
         display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 28px; color: #fff;
         box-shadow: var(--shadow-md); border: 3px solid var(--surface);
+        overflow: hidden;
     }
+    .avatar-preview img { width:100%; height:100%; object-fit:cover; display:block; }
     .avatar-actions { display: flex; gap: 10px; }
     
     /* Buttons */
@@ -205,6 +219,11 @@ html{overflow-x:hidden;max-width:100vw;}
     .btn-outline:hover { background: var(--surface-alt); border-color: var(--ink-faint); }
     .btn-danger { background: var(--danger-wash); color: var(--danger); }
     .btn-danger:hover { background: var(--danger); color: #fff; }
+
+    .password-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+    .password-reset-link { padding: 10px 4px; border: 0; background: none; color: var(--blue-light); font: 600 13px 'Inter', sans-serif; cursor: pointer; }
+    .password-reset-link:hover { text-decoration: underline; }
+    .password-reset-link:disabled { cursor: wait; opacity: .6; }
     
     .pane-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; }
 
@@ -241,7 +260,7 @@ html{overflow-x:hidden;max-width:100vw;}
 <!-- SIDEBAR -->
 <nav class="sidebar">
     <div class="logo">
-        <div class="logo-mark">MG</div>
+        <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
         <div class="logo-text">MGMCOET<span>Student Portal</span></div>
     </div>
 
@@ -288,13 +307,14 @@ html{overflow-x:hidden;max-width:100vw;}
                 <p class="pane-subtitle">Manage your personal information and student credentials.</p>
                 
                 <div class="avatar-upload">
-                    <div class="avatar-preview" id="setAvatar">P</div>
+                    <div class="avatar-preview" id="setAvatar" aria-label="Profile picture">P</div>
                     <div>
                         <div class="avatar-actions">
-                            <button class="btn btn-outline"><i class="fas fa-upload"></i> Change Photo</button>
-                            <button class="btn btn-danger"><i class="fas fa-trash"></i></button>
+                            <input type="file" id="avatarFile" accept="image/jpeg,image/png,image/gif" hidden>
+                            <button class="btn btn-outline" id="changePhotoBtn" type="button"><i class="fas fa-upload"></i> Change Photo</button>
+                            <button class="btn btn-danger" id="removePhotoBtn" type="button" aria-label="Remove profile picture"><i class="fas fa-trash"></i></button>
                         </div>
-                        <p style="font-size: 11.5px; color: var(--ink-faint); margin-top: 8px;">JPG, GIF or PNG. Max size of 2MB.</p>
+                        <p style="font-size: 11.5px; color: var(--ink-faint); margin-top: 8px;">JPG, GIF or PNG. Maximum file size: 2 MB.</p>
                     </div>
                 </div>
 
@@ -326,7 +346,7 @@ html{overflow-x:hidden;max-width:100vw;}
                 </div>
 
                 <div class="pane-footer">
-                    <button class="btn btn-outline">Cancel</button>
+                    <button class="btn btn-outline" id="cancelProfileBtn" type="button">Cancel</button>
                     <button class="btn btn-primary" id="saveProfileBtn"><i class="fas fa-save"></i> Save Changes</button>
                 </div>
             </div>
@@ -339,10 +359,10 @@ html{overflow-x:hidden;max-width:100vw;}
                 <div class="config-row">
                     <div class="config-info">
                         <h4>Dark Mode</h4>
-                        <p>Switch between light and dark themes (Currently locked to System Default).</p>
+                        <p>Switch between light and dark themes.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox">
+                        <input type="checkbox" id="darkModeToggle" aria-label="Enable dark mode">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -353,30 +373,42 @@ html{overflow-x:hidden;max-width:100vw;}
                         <p>Reduce padding and margins to fit more content on the screen.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox">
+                        <input type="checkbox" id="compactViewToggle">
                         <span class="slider"></span>
                     </label>
                 </div>
 
                 <div class="form-group" style="margin-top: 24px;">
                     <label class="form-label">Default Landing Page</label>
-                    <select class="form-input">
-                        <option>Dashboard</option>
-                        <option>Academics</option>
-                        <option>Attendance Tracker</option>
-                        <option>Community</option>
+                    <select class="form-input" id="defaultLandingPage">
+                        <option value="dashboard">Dashboard</option>
+                        <option value="academics">Academics</option>
+                        <option value="attendance">Attendance Tracker</option>
+                        <option value="community">Community</option>
                     </select>
                 </div>
                 
                 <div class="pane-footer">
-                    <button class="btn btn-primary"><i class="fas fa-save"></i> Save Preferences</button>
+                    <button class="btn btn-primary" id="savePreferencesBtn" type="button"><i class="fas fa-save"></i> Save Preferences</button>
                 </div>
             </div>
 
             <!-- Pane 3: Notifications -->
             <div class="pane" id="pane-notifications">
                 <h2 class="pane-title">Notification Settings</h2>
-                <p class="pane-subtitle">Control what alerts you receive and where you receive them.</p>
+                <p class="pane-subtitle">Enable push on each phone or laptop to receive message and academic alerts even when the portal tab is closed. Sound follows your browser and device notification settings.</p>
+                <div class="config-row">
+                    <div class="config-info">
+                        <h4>Background Push on This Device</h4>
+                        <p id="browserNotificationStatus" role="status">Check browser notification permission.</p>
+                        <p id="backgroundPushStatus" role="status">Checking this device’s push setup…</p>
+                        <p id="notificationRealtimeStatus" role="status">Checking portal connection…</p>
+                    </div>
+                    <div class="notification-actions">
+                        <button class="btn btn-primary" type="button" id="enableBrowserNotifications">Enable push on this device</button>
+                        <button class="btn btn-outline" type="button" id="testBrowserNotifications">Send test push</button>
+                    </div>
+                </div>
 
                 <div class="config-row">
                     <div class="config-info">
@@ -384,7 +416,7 @@ html{overflow-x:hidden;max-width:100vw;}
                         <p>Get notified if your overall attendance drops below 75%.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-notification-category="attendance" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -392,10 +424,10 @@ html{overflow-x:hidden;max-width:100vw;}
                 <div class="config-row">
                     <div class="config-info">
                         <h4>Community Messages</h4>
-                        <p>Receive push notifications for new DMs and group mentions.</p>
+                        <p>Receive browser alerts for new direct and group messages.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-notification-category="community" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -406,7 +438,7 @@ html{overflow-x:hidden;max-width:100vw;}
                         <p>Alerts when faculty uploads a new assignment or official notice.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" data-notification-category="academics" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -417,7 +449,7 @@ html{overflow-x:hidden;max-width:100vw;}
                         <p>Receive a weekly summary of portal activities and pending tasks.</p>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox">
+                        <input type="checkbox" data-notification-category="emailDigest">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -442,7 +474,10 @@ html{overflow-x:hidden;max-width:100vw;}
                         <input type="password" class="form-input" id="confPass" placeholder="Confirm password">
                     </div>
                 </div>
-                <button class="btn btn-outline" id="updatePassBtn" style="margin-bottom: 24px;">Update Password</button>
+                <div class="password-actions">
+                    <button class="btn btn-outline" id="updatePassBtn" type="button">Update Password</button>
+                    <button class="password-reset-link" id="forgotSettingsPassBtn" type="button">Forgot current password?</button>
+                </div>
 
                 <div class="config-row" style="border-top: 1px solid var(--border); padding-top: 24px;">
                     <div class="config-info">
@@ -485,40 +520,383 @@ html{overflow-x:hidden;max-width:100vw;}
     });
 </script>
 
+<script src="ui-feedback.js"></script>
 <script type="module">
-  import { requireAuth, loadProfile, saveProfile, changePassword, signOutEverywhere } from './auth.js';
+  import { requireAuth, loadProfile, saveProfile, saveAvatarUrl, changePassword, resetPasswordRequest, signOutEverywhere, supabase } from './auth.js';
+  import { CLOUDINARY_CLOUD, CLOUDINARY_PRESET } from './chat-config.js';
+  import { getNotificationPreferences, saveNotificationPreferences, requestBrowserNotifications, subscribeToBrowserPush } from './portal-notifications.js';
+  import { VAPID_PUBLIC_KEY } from './push-config.js';
   const $ = (id) => document.getElementById(id);
+  const darkModeToggle = $('darkModeToggle');
+  const PORTAL_THEME_KEY = 'mgm_portal_dark_mode';
+  let savedDarkMode = false;
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${PORTAL_THEME_KEY}=([01])`));
+    if (match) savedDarkMode = match[1] === '1';
+    else savedDarkMode = localStorage.getItem(PORTAL_THEME_KEY) === '1';
+  } catch (_) {
+    try { savedDarkMode = localStorage.getItem(PORTAL_THEME_KEY) === '1'; } catch (_) {}
+  }
+  darkModeToggle.checked = savedDarkMode;
+  document.documentElement.classList.toggle('portal-dark-mode', savedDarkMode);
+  darkModeToggle.addEventListener('change', () => {
+    const enabled = darkModeToggle.checked;
+    document.documentElement.classList.toggle('portal-dark-mode', enabled);
+    // Save from the settings page too, so the preference persists even if
+    // the portal shell callback is unavailable (for example, when opened directly).
+    try { localStorage.setItem(PORTAL_THEME_KEY, enabled ? '1' : '0'); } catch (_) {}
+    try { document.cookie = `${PORTAL_THEME_KEY}=${enabled ? '1' : '0'}; Path=/; Max-Age=31536000; SameSite=Lax`; } catch (_) {}
+    if (window.parent?.setPortalDarkMode) window.parent.setPortalDarkMode(enabled);
+  });
+  const compactViewToggle = $('compactViewToggle');
+  const defaultLandingPage = $('defaultLandingPage');
+  const PREFERENCES_KEY = 'mgm_portal_preferences';
+  let savedPreferences = { compact: false, landingPage: 'dashboard' };
+  try {
+    const storedPreferences = JSON.parse(localStorage.getItem(PREFERENCES_KEY) || '{}');
+    if (storedPreferences && typeof storedPreferences === 'object') {
+      savedPreferences = { ...savedPreferences, ...storedPreferences };
+    }
+  } catch (_) {}
+  compactViewToggle.checked = Boolean(savedPreferences.compact);
+  defaultLandingPage.value = savedPreferences.landingPage || 'dashboard';
+  $('savePreferencesBtn').addEventListener('click', () => {
+    const preferences = {
+      compact: compactViewToggle.checked,
+      landingPage: defaultLandingPage.value
+    };
+    try {
+      localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+      savedPreferences = preferences;
+      window.parent?.applyPortalPreferences?.(preferences);
+      portalToast('Preferences saved.');
+    } catch (error) {
+      portalToast('Unable to save preferences: ' + (error.message || error), 'error');
+    }
+  });
+  let currentAvatarUrl = '';
+  let currentFullName = 'Student';
+  let savedProfile = null;
 
-  if(await requireAuth()){
+  function renderAvatar(url, name = currentFullName) {
+    const avatars = [$('setAvatar'), document.querySelector('.profile-mini .avatar')].filter(Boolean);
+    avatars.forEach(avatar => {
+      avatar.replaceChildren();
+      if (url) {
+        const image = document.createElement('img');
+        image.src = url;
+        image.alt = 'Profile picture';
+        image.onerror = () => renderAvatar('', name);
+        avatar.append(image);
+      } else {
+        avatar.textContent = (name || 'S').trim().charAt(0).toUpperCase() || 'S';
+      }
+    });
+  }
+
+  const session = await requireAuth();
+  const notificationUserId = session?.user?.id;
+  const notificationInputs = [...document.querySelectorAll('[data-notification-category]')];
+  const notificationStatus = $('browserNotificationStatus');
+  const backgroundPushStatus = $('backgroundPushStatus');
+  const notificationRealtimeStatus = $('notificationRealtimeStatus');
+  const enableNotificationsButton = $('enableBrowserNotifications');
+  const testNotificationsButton = $('testBrowserNotifications');
+  let notificationPreferences = getNotificationPreferences(notificationUserId);
+  const applyNotificationPreferences = () => {
+    notificationInputs.forEach(input => {
+      input.checked = Boolean(notificationPreferences[input.dataset.notificationCategory]);
+    });
+  };
+  const persistNotificationPreferences = async () => {
+    if (!notificationUserId) return;
+    const { error } = await supabase.from('portal_notification_preferences').upsert({
+      user_id: notificationUserId,
+      attendance: Boolean(notificationPreferences.attendance),
+      community: Boolean(notificationPreferences.community),
+      academics: Boolean(notificationPreferences.academics),
+      email_digest: Boolean(notificationPreferences.emailDigest)
+    }, { onConflict: 'user_id' });
+    if (error) throw error;
+  };
+  if (notificationUserId) {
+    const { data: storedNotificationPreferences, error: preferenceLoadError } = await supabase
+      .from('portal_notification_preferences')
+      .select('attendance,community,academics,email_digest')
+      .eq('user_id', notificationUserId)
+      .maybeSingle();
+    if (!preferenceLoadError && storedNotificationPreferences) {
+      notificationPreferences = {
+        ...notificationPreferences,
+        attendance: storedNotificationPreferences.attendance,
+        community: storedNotificationPreferences.community,
+        academics: storedNotificationPreferences.academics,
+        emailDigest: storedNotificationPreferences.email_digest
+      };
+      saveNotificationPreferences(notificationUserId, notificationPreferences);
+    }
+    if (!preferenceLoadError) {
+      persistNotificationPreferences().catch(error => console.warn('Notification preferences could not be synced:', error.message));
+    }
+    applyNotificationPreferences();
+    notificationInputs.forEach(input => input.addEventListener('change', async () => {
+      notificationPreferences[input.dataset.notificationCategory] = input.checked;
+      try {
+        saveNotificationPreferences(notificationUserId, notificationPreferences);
+        await persistNotificationPreferences();
+      } catch (error) {
+        portalToast('Unable to save notification preferences: ' + (error.message || error), 'error');
+      }
+    }));
+  }
+  function renderNotificationPermission() {
+    if (!('Notification' in window)) {
+      notificationStatus.textContent = 'This browser does not support browser notifications.';
+      enableNotificationsButton.disabled = true;
+      return;
+    }
+    const labels = { granted: 'Browser notification permission is allowed on this device.', denied: 'Notifications are blocked by your browser. Change this site’s permission in browser settings.', default: 'Allow notifications to receive alerts from this site.' };
+    notificationStatus.textContent = labels[Notification.permission] || labels.default;
+    enableNotificationsButton.textContent = 'Enable push on this device';
+    enableNotificationsButton.disabled = Notification.permission === 'denied';
+  }
+  renderNotificationPermission();
+  const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const installedWebApp = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  async function renderBackgroundPushStatus() {
+    if (!window.isSecureContext) {
+      backgroundPushStatus.textContent = 'Push notifications need a secure HTTPS connection.';
+      return;
+    }
+    if (iosDevice && !installedWebApp) {
+      backgroundPushStatus.textContent = 'On iPhone/iPad, add this site to the Home Screen and open it there to enable push.';
+      return;
+    }
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      backgroundPushStatus.textContent = 'Background push is not supported by this browser.';
+      return;
+    }
+    if (!notificationUserId) {
+      backgroundPushStatus.textContent = 'Sign in to connect this device to your account.';
+      return;
+    }
+    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('PASTE_')) {
+      backgroundPushStatus.textContent = 'Push server setup is incomplete: add the VAPID public key and matching Supabase secrets.';
+      return;
+    }
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('./');
+      const subscription = await registration?.pushManager.getSubscription();
+      if (!subscription) {
+        backgroundPushStatus.textContent = 'This device is not subscribed yet. Enable push to connect it.';
+        return;
+      }
+      const { data, error } = await supabase.from('portal_push_subscriptions')
+        .select('endpoint').eq('user_id', notificationUserId).eq('endpoint', subscription.endpoint).maybeSingle();
+      if (error) {
+        backgroundPushStatus.textContent = error.code === '42P01' || error.code === 'PGRST205'
+          ? 'Push database setup is missing. Run schema_web_push.sql in Supabase.'
+          : 'Could not check the push subscription. Check the Supabase connection.';
+        return;
+      }
+      backgroundPushStatus.textContent = data
+        ? 'This device is connected for background push. Keep browser and device notifications enabled.'
+        : 'This browser has a push subscription that is not linked to this account. Enable push to reconnect it.';
+    } catch (error) {
+      backgroundPushStatus.textContent = 'Could not check this device’s push status: ' + (error.message || error);
+    }
+  }
+  void renderBackgroundPushStatus();
+  const connectionKey = notificationUserId
+    ? `mgm_portal_notifications_connection_${notificationUserId}`
+    : '';
+  const renderNotificationConnection = () => {
+    const connectionState = connectionKey ? localStorage.getItem(connectionKey) : null;
+    notificationRealtimeStatus.textContent = connectionState === 'connected'
+      ? 'Live event connection is active.'
+      : connectionState === 'error'
+        ? 'Live event connection failed. Check Supabase Realtime configuration.'
+        : 'Live event connection is starting. Reopen Settings in a moment to check it.';
+  };
+  renderNotificationConnection();
+  window.addEventListener('storage', event => {
+    if (event.key === connectionKey) renderNotificationConnection();
+  });
+  enableNotificationsButton.addEventListener('click', async () => {
+    enableNotificationsButton.disabled = true;
+    const oldLabel = enableNotificationsButton.textContent;
+    enableNotificationsButton.textContent = 'Connecting…';
+    try {
+      if (!notificationUserId) throw new Error('Sign in before enabling push notifications.');
+      if (!window.isSecureContext) throw new Error('Background push requires a secure HTTPS connection.');
+      if (!('Notification' in window)) throw new Error('This browser does not support notifications.');
+      let permission = Notification.permission;
+      if (permission === 'default') {
+        permission = window.parent?.requestPortalNotificationPermission
+          ? await window.parent.requestPortalNotificationPermission()
+          : await requestBrowserNotifications();
+      }
+      renderNotificationPermission();
+      if (permission !== 'granted') throw new Error(permission === 'denied'
+        ? 'Notifications are blocked. Allow this site in browser settings, then try again.'
+        : 'Notification permission was not granted.');
+
+      const subscription = await subscribeToBrowserPush(VAPID_PUBLIC_KEY);
+      const { error } = await supabase.from('portal_push_subscriptions').upsert({
+        user_id: notificationUserId,
+        endpoint: subscription.endpoint,
+        subscription
+      }, { onConflict: 'endpoint' });
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          throw new Error('Push database setup is missing. Run schema_web_push.sql in Supabase.');
+        }
+        throw error;
+      }
+      await renderBackgroundPushStatus();
+      backgroundPushStatus.textContent = 'Push is enabled on this device. Send a test push to confirm delivery.';
+      portalToast('Background push enabled on this device.');
+    } catch (error) {
+      backgroundPushStatus.textContent = error.message || 'Unable to enable background push.';
+      portalToast(backgroundPushStatus.textContent, 'error');
+    } finally {
+      enableNotificationsButton.disabled = !('Notification' in window) || Notification.permission === 'denied';
+      enableNotificationsButton.textContent = oldLabel;
+    }
+  });
+  testNotificationsButton.addEventListener('click', async () => {
+    testNotificationsButton.disabled = true;
+    const oldLabel = testNotificationsButton.textContent;
+    testNotificationsButton.textContent = 'Sending…';
+    try {
+      if (!notificationUserId) throw new Error('Sign in before sending a test push.');
+      if (!('Notification' in window)) throw new Error('This browser does not support notifications.');
+      if (Notification.permission !== 'granted') throw new Error('Enable browser notifications on this device first.');
+      const { data, error } = await supabase.functions.invoke('portal-push', { body: { type: 'TEST' } });
+      if (error) throw new Error(error.message || 'The push function could not be reached.');
+      if (!data?.sent) throw new Error('No push was delivered. Check this device’s subscription and Supabase push setup.');
+      backgroundPushStatus.textContent = `Test push sent (${data.sent} device${data.sent === 1 ? '' : 's'}). Check the notification tray.`;
+      portalToast('Test push sent. Check this device’s notifications.');
+    } catch (error) {
+      backgroundPushStatus.textContent = error.message || 'Unable to send a test push.';
+      portalToast(backgroundPushStatus.textContent, 'error');
+    } finally {
+      testNotificationsButton.disabled = false;
+      testNotificationsButton.textContent = oldLabel;
+    }
+  });
+  if(session){
     try{
       const p = await loadProfile();
+      currentFullName = p.full_name || session.user.email || 'Student';
       $('setName').value = p.full_name || '';
       $('setRoll').value = p.roll_no || '';
       $('setEmail').value = p.email || '';
       $('setPersonalEmail').value = p.personal_email || '';
       $('setBio').value = p.bio || '';
-      $('setAvatar').textContent = (p.full_name || 'S').trim().charAt(0).toUpperCase();
-    }catch(e){ alert('Profile load nahi hui: ' + e.message); }
+      savedProfile = { full_name: $('setName').value, personal_email: $('setPersonalEmail').value, bio: $('setBio').value };
+      currentAvatarUrl = session.user.user_metadata?.avatar_url || '';
+      renderAvatar(currentAvatarUrl);
+    }catch(e){ portalToast('Unable to load profile: ' + e.message, 'error'); }
   }
+
+  $('setName').addEventListener('input', () => {
+    if (!currentAvatarUrl) renderAvatar('', $('setName').value || 'Student');
+  });
+  $('changePhotoBtn').addEventListener('click', () => $('avatarFile').click());
+  $('avatarFile').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      portalToast('Choose a JPG, PNG, or GIF image.', 'error'); event.target.value = ''; return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      portalToast('The image must be 2 MB or smaller.', 'error'); event.target.value = ''; return;
+    }
+    const button = $('changePhotoBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…';
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      body.append('upload_preset', CLOUDINARY_PRESET);
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUDINARY_CLOUD)}/image/upload`, { method: 'POST', body });
+      const result = await response.json();
+      if (!response.ok || !result.secure_url) throw new Error(result.error?.message || 'Cloudinary upload failed.');
+      await saveAvatarUrl(result.secure_url);
+      currentAvatarUrl = result.secure_url;
+      renderAvatar(currentAvatarUrl);
+      portalToast('Profile picture updated.');
+    } catch (error) {
+      portalToast('Unable to upload profile picture: ' + (error.message || error), 'error');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i class="fas fa-upload"></i> Change Photo';
+      event.target.value = '';
+    }
+  });
+  $('removePhotoBtn').addEventListener('click', async () => {
+    if (!currentAvatarUrl) return;
+    const button = $('removePhotoBtn'); button.disabled = true;
+    try {
+      await saveAvatarUrl('');
+      currentAvatarUrl = '';
+      renderAvatar('', $('setName').value || 'Student');
+      portalToast('Profile picture removed.');
+    } catch (error) {
+      portalToast('Unable to remove profile picture: ' + (error.message || error), 'error');
+    } finally { button.disabled = false; }
+  });
 
   $('saveProfileBtn').addEventListener('click', async () => {
     try{
-      await saveProfile({ full_name: $('setName').value, bio: $('setBio').value, personal_email: $('setPersonalEmail').value });
-      alert('Profile saved.');
-    }catch(e){ alert('Save failed: ' + e.message); }
+      const profile = { full_name: $('setName').value, bio: $('setBio').value, personal_email: $('setPersonalEmail').value };
+      await saveProfile(profile);
+      savedProfile = profile;
+      currentFullName = $('setName').value.trim() || currentFullName;
+      if (!currentAvatarUrl) renderAvatar('', currentFullName);
+      portalToast('Profile saved.');
+    }catch(e){ portalToast('Save failed: ' + e.message, 'error'); }
+  });
+
+  $('cancelProfileBtn').addEventListener('click', () => {
+    if (!savedProfile) return;
+    $('setName').value = savedProfile.full_name;
+    $('setPersonalEmail').value = savedProfile.personal_email;
+    $('setBio').value = savedProfile.bio;
+    currentFullName = savedProfile.full_name || currentFullName;
+    if (!currentAvatarUrl) renderAvatar('', currentFullName);
   });
 
   $('updatePassBtn').addEventListener('click', async () => {
-    if($('newPass').value !== $('confPass').value){ alert('Dono naye passwords match nahi karte.'); return; }
+    if($('newPass').value !== $('confPass').value){ portalToast('The new passwords do not match.', 'error'); return; }
     try{
       await changePassword($('curPass').value, $('newPass').value);
       $('curPass').value = $('newPass').value = $('confPass').value = '';
-      alert('Password update ho gaya.');
-    }catch(e){ alert(e.message); }
+      portalToast('Password updated.');
+    }catch(e){ portalToast(e.message, 'error'); }
+  });
+
+  $('forgotSettingsPassBtn').addEventListener('click', async () => {
+    const email = session?.user?.email;
+    if (!email) { portalToast('Your account email could not be found. Please sign in again.', 'error'); return; }
+    const button = $('forgotSettingsPassBtn');
+    button.disabled = true;
+    button.textContent = 'Sending reset link…';
+    try {
+      await resetPasswordRequest(email);
+      portalToast('Password reset link sent to your registered email. Check your Spam/Junk folder too.');
+    } catch (error) {
+      portalToast('Unable to send reset link: ' + (error.message || error), 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Forgot current password?';
+    }
   });
 
   $('forceLogoutBtn').addEventListener('click', async () => {
-    if(confirm('Sabhi devices se logout kar dein?')) await signOutEverywhere();
+    if(await portalConfirm('Sign out of this account on all devices?', { danger: true, confirmText: 'Sign out everywhere' })) await signOutEverywhere();
   });
 </script>
 

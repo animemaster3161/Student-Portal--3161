@@ -94,12 +94,12 @@ function migrationHint(error) {
   console.error('Routine/attendance setup error:', error);
   const text = String(error?.message || error || '');
   if (/set_student_class_preference|could not find the function|function .* does not exist/i.test(text)) {
-    return 'Class change ke liye schema_set_student_class_preference.sql ko isi Supabase project ke SQL Editor mein run karo, phir page reload karo.';
+    return 'To enable class changes, run schema_set_student_class_preference.sql in this Supabase project’s SQL Editor, then reload the page.';
   }
   if (/schema_class_schedule_attendance|timetable_classes|student_class_preferences|attendance_logs|relation .* does not exist/i.test(text)) {
-    return 'Supabase setup pending hai. Pehle schema_class_schedule_attendance.sql ko Supabase SQL Editor mein run karo.';
+    return 'Supabase setup is incomplete. Run schema_class_schedule_attendance.sql in the Supabase SQL Editor.';
   }
-  return `Supabase se data load nahi hua: ${text || 'network error'}`;
+  return `Unable to load data from Supabase: ${text || 'network error'}`;
 }
 
 async function loadClassOptions() {
@@ -124,7 +124,7 @@ async function loadPreference() {
 
 async function saveClassPreference(classId) {
   const selectedClass = state.classes.find((item) => item.id === classId);
-  if (!selectedClass) throw new Error('Selected class list mein nahi mili. Page reload karke dobara try karo.');
+  if (!selectedClass) throw new Error('The selected class was not found. Reload the page and try again.');
 
   const { error } = await supabase.rpc('set_student_class_preference', {
     p_class_id: classId,
@@ -163,11 +163,11 @@ function renderDashboardAssignments(items, error = '') {
   const target = $('dashboardAssignments');
   if (!target) return;
   if (error) {
-    target.innerHTML = `<div class="assignment-empty">Assignments load nahi ho paaye. ${esc(error)}</div>`;
+    target.innerHTML = `<div class="assignment-empty">Unable to load assignments. ${esc(error)}</div>`;
     return;
   }
   if (!items.length) {
-    target.innerHTML = '<div class="assignment-empty">Abhi koi upcoming assignment nahi hai.</div>';
+    target.innerHTML = '<div class="assignment-empty">There are no upcoming assignments.</div>';
     return;
   }
   target.innerHTML = items.map((item) => {
@@ -209,7 +209,7 @@ async function loadDashboardAssignments() {
     renderDashboardAssignments(upcoming.map((item) => ({ ...item, subjectName: subjectNames[item.subject_id] })));
   } catch (error) {
     console.error('Dashboard assignments failed to load:', error);
-    renderDashboardAssignments([], error.message || 'Supabase se connect nahi ho paya.');
+    renderDashboardAssignments([], error.message || 'Unable to connect to Supabase.');
   }
 }
 
@@ -221,10 +221,10 @@ function openClassDialog(required = false) {
     backdrop.className = 'class-dialog-backdrop';
     backdrop.innerHTML = `
       <section class="class-dialog" role="dialog" aria-modal="true" aria-labelledby="classDialogTitle">
-        <h2 id="classDialogTitle">Apni class select karo</h2>
-        <p>Routine aur attendance personalize karne ke liye apna year aur section chuno. Ye choice account mein save rahegi.</p>
+        <h2 id="classDialogTitle">Select your class</h2>
+        <p>Choose your year and section to personalize your timetable and attendance. Your selection will be saved to your account.</p>
         <label for="classDialogSelect">Course / year / section</label>
-        <select id="classDialogSelect"><option value="">Class choose karo</option></select>
+      <select id="classDialogSelect"><option value="">Choose a class</option></select>
         <div class="class-dialog-actions">
           <button class="class-dialog-cancel" id="classDialogCancel" type="button">Cancel</button>
           <button class="class-dialog-save" id="classDialogSave" type="button">Save class</button>
@@ -239,7 +239,7 @@ function openClassDialog(required = false) {
     });
     $('classDialogSave').addEventListener('click', async () => {
       const id = $('classDialogSelect').value;
-      if (!id) { toast('Pehle apni class select karo.', true); return; }
+      if (!id) { toast('Select your class first.', true); return; }
       const button = $('classDialogSave');
       button.disabled = true;
       button.textContent = 'Saving…';
@@ -247,14 +247,14 @@ function openClassDialog(required = false) {
         await saveClassPreference(id);
         backdrop.classList.remove('open');
         renderCurrentPage();
-        toast('Class save ho gayi. Routine personalize kar diya.');
+        toast('Class saved. Your timetable has been personalized.');
       } catch (error) {
         // Preference save ho chuki ho sakti hai, chahe timetable/log refresh fail ho.
         // Aise mein purani class ka stale UI mat chhodo.
         if (state.selectedClass?.id === id) {
           backdrop.classList.remove('open');
           renderCurrentPage();
-          toast(`Class save ho gayi, lekin routine/attendance refresh nahi hua. ${migrationHint(error)}`, true);
+          toast(`Class saved, but the timetable and attendance could not be refreshed. ${migrationHint(error)}`, true);
         } else {
           toast(migrationHint(error), true);
         }
@@ -270,7 +270,7 @@ function openClassDialog(required = false) {
     if (!byYear.has(item.year_no)) byYear.set(item.year_no, []);
     byYear.get(item.year_no).push(item);
   }
-  select.innerHTML = '<option value="">Class choose karo</option>' + [...byYear.entries()].map(([year, items]) =>
+  select.innerHTML = '<option value="">Choose a class</option>' + [...byYear.entries()].map(([year, items]) =>
     `<optgroup label="${year}${year === 2 ? 'nd' : year === 3 ? 'rd' : 'th'} Year">${items.map((item) =>
       `<option value="${esc(item.id)}">${esc(item.label)}</option>`).join('')}</optgroup>`).join('');
   select.value = state.selectedClass?.id || '';
@@ -320,7 +320,7 @@ function periodMinutes(value) {
   return hour * 60 + minute;
 }
 
-function renderRoutine(target, entries, emptyText = 'Is din ke liye timetable entry nahi hai.') {
+function renderRoutine(target, entries, emptyText = 'No timetable entries for this day.') {
   if (!target) return;
   if (!entries.length) {
     target.innerHTML = `<div class="routine-empty">${esc(emptyText)}</div>`;
@@ -365,7 +365,7 @@ function renderDashboard() {
   const now = today.getHours() * 60 + today.getMinutes();
   const live = todaysEntries.find((entry) => now >= periodMinutes(entry.starts_at) && now < periodMinutes(entry.ends_at));
   const next = todaysEntries.find((entry) => periodMinutes(entry.starts_at) > now);
-  renderRoutine($('dashboardRoutine'), todaysEntries, 'Aaj is class ka koi scheduled period nahi hai.');
+  renderRoutine($('dashboardRoutine'), todaysEntries, 'No periods are scheduled for this class today.');
   if ($('routineDate')) $('routineDate').textContent = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
   if ($('heroAttendanceValue')) $('heroAttendanceValue').textContent = `${stats.percent}%`;
   if ($('heroCurrentValue')) $('heroCurrentValue').textContent = live ? live.subject_code : '—';
@@ -409,7 +409,7 @@ async function setAttendance(entryId, date, status) {
   state.busy = true;
   try {
     const entry = state.entries.find((item) => item.id === entryId);
-    if (!entry) throw new Error('Timetable period nahi mila. Page reload karke dobara try karo.');
+    if (!entry) throw new Error('The timetable period was not found. Reload the page and try again.');
     const { error } = await supabase.from('attendance_logs').upsert({
       student_id: state.user.id,
       class_id: state.selectedClass.id,
@@ -421,7 +421,7 @@ async function setAttendance(entryId, date, status) {
     if (error) throw error;
     await refreshLogs();
     renderAttendancePage();
-    toast(status === 'present' ? 'Present mark ho gaya.' : 'Absent mark ho gaya.');
+    toast(status === 'present' ? 'Marked present.' : 'Marked absent.');
   } catch (error) {
     toast(migrationHint(error), true);
   } finally {
@@ -436,7 +436,7 @@ function renderAttendanceSubjects() {
   const date = localDateKey(today);
   const entries = entriesForDay(today);
   if (!entries.length) {
-    wrap.innerHTML = '<div class="routine-empty">Aaj aapki selected class ka koi period scheduled nahi hai.</div>';
+    wrap.innerHTML = '<div class="routine-empty">No periods are scheduled for your selected class today.</div>';
     return;
   }
   wrap.innerHTML = entries.map((entry) => {
@@ -484,7 +484,7 @@ function renderLogTable() {
   const sorted = [...state.logs].sort((a, b) => b.attendance_date.localeCompare(a.attendance_date));
   if ($('logCount')) $('logCount').textContent = `${sorted.length} entries`;
   if (!sorted.length) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="4">Abhi attendance record nahi hai. Aaj ke scheduled periods par status mark karo.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="4">No attendance records yet. Mark your status for today’s scheduled periods.</td></tr>';
     return;
   }
   body.innerHTML = sorted.slice(0, 100).map((log) => {
@@ -518,7 +518,7 @@ function renderLogTable() {
       if (error) { toast(migrationHint(error), true); return; }
       await refreshLogs();
       renderAttendancePage();
-      toast('Attendance entry delete ho gayi.');
+      toast('Attendance entry deleted.');
     });
   });
 }
@@ -560,11 +560,11 @@ function renderCalendar() {
 function openDateLog(date) {
   const today = localDateKey(new Date());
   const earliest = state.selectedClass?.effective_from || '2026-07-20';
-  if (date > today) { toast('Future date ki attendance abhi mark nahi kar sakte.', true); return; }
-  if (date < earliest) { toast(`Is timetable ke attendance logs ${new Date(`${earliest}T00:00:00`).toLocaleDateString('en-IN')} se available hain.`, true); return; }
+  if (date > today) { toast('Attendance cannot be marked for a future date.', true); return; }
+  if (date < earliest) { toast(`Attendance records for this timetable are available from ${new Date(`${earliest}T00:00:00`).toLocaleDateString('en-IN')}.`, true); return; }
   const dateObject = new Date(`${date}T00:00:00`);
   const entries = entriesForDay(dateObject);
-  if (!entries.length) { toast('Is date par selected class ka period schedule nahi hai.', true); return; }
+  if (!entries.length) { toast('No periods are scheduled for the selected class on this date.', true); return; }
   $('modalDate').textContent = dateObject.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   $('modalSubject').innerHTML = entries.map((entry) => {
     const log = attendanceLogFor(entry.id, date);

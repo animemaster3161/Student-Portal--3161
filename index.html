@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Portal | MGMCOET</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,6 +21,7 @@
     --sidebar-width:272px;
     --ease:cubic-bezier(.22,1,.36,1);
   }
+  html.portal-dark-mode{color-scheme:dark;--bg-base:#0B1220;--ink:#E7EDF7;--ink-soft:#B1BED2;}
   *{margin:0;padding:0;box-sizing:border-box;}
 html{overflow-x:hidden;max-width:100vw;}
   html,body{height:100%;height:100svh;}
@@ -104,7 +106,9 @@ html{overflow-x:hidden;max-width:100vw;}
     background:linear-gradient(145deg,var(--blue-light),var(--blue-deep));
     display:flex;align-items:center;justify-content:center;
     color:#fff;font-weight:700;font-size:14px;flex-shrink:0;
+    overflow:hidden;
   }
+  .profile-mini .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
   .profile-mini .info{flex:1;overflow:hidden;}
   .profile-mini .info strong{display:block;font-size:13px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .profile-mini .info span{font-size:11px;color:rgba(255,255,255,.45);}
@@ -183,7 +187,7 @@ html{overflow-x:hidden;max-width:100vw;}
 
 <nav class="sidebar" id="sidebar">
   <div class="logo">
-    <div class="logo-mark">MG</div>
+    <img class="logo-mark" src="assets/mgmcoet-mark.svg" alt="" style="display:block;background:transparent;box-shadow:none;border-radius:0;object-fit:contain">
     <div class="logo-text">MGMCOET<span>Student Portal</span></div>
   </div>
 
@@ -230,6 +234,79 @@ html{overflow-x:hidden;max-width:100vw;}
 
   const frame = document.getElementById('contentFrame');
   const loader = document.getElementById('loader');
+  window.portalAuthReady = false;
+  const PORTAL_THEME_KEY = 'mgm_portal_dark_mode';
+  const PORTAL_PREFERENCES_KEY = 'mgm_portal_preferences';
+  const frameTheme = document.createElement('style');
+  frameTheme.id = 'portal-dark-theme';
+  frameTheme.textContent = `
+    :root{color-scheme:dark!important}
+    html,body{background:#0b1220!important;color:#e7edf7!important}
+    body{--bg-base:#0b1220;--surface:#141f31;--surface-alt:#1b2a40;--ink:#e7edf7;--ink-soft:#b1bed2;--ink-faint:#8594ab;--border:rgba(210,225,245,.13)}
+    body :is(.main-content,.content-area,.view,.panel,.settings-nav,.pane,.card,.subject-card,.chapter-card,.assignment-card,.notice-card,.resource-card,.study-resources-panel,.dashboard-card,.stat-card,.routine-card,.attendance-card,.fixed-bottom-bar,.modal-box,.modal-card,.modal-panel,.viewer-panel,.document-viewer-panel){background-color:#141f31!important;color:#e7edf7!important;border-color:rgba(210,225,245,.13)!important}
+    body :is(input,select,textarea){background-color:#0f1929!important;color:#e7edf7!important;border-color:#34435b!important}
+    body :is(h1,h2,h3,h4,h5,p,label,small,td,th,.empty-note,.pane-subtitle,.config-info p){color:#d7e1f0!important}
+    body :is(.sidebar,.chat-list,.chat-sidebar){background-color:#0a1120!important}
+    body .message-menu-trigger{background:#1b2a40!important;color:#d7e1f0!important;border-color:rgba(210,225,245,.16)!important;box-shadow:0 5px 18px rgba(0,0,0,.28)!important}
+    body .message-action-popover{background:rgba(20,31,49,.98)!important;color:#e7edf7!important;border-color:rgba(210,225,245,.16)!important;box-shadow:0 16px 42px rgba(0,0,0,.48)!important}
+    body .reaction-picker{border-bottom-color:rgba(210,225,245,.16)!important}
+    body .reaction-picker button,body .message-menu-item{color:#e7edf7!important}
+    body .reaction-picker button:hover,body .reaction-picker button:focus-visible,body .message-menu-item:hover{background:#263750!important}
+    body .message-menu-item.danger{color:#ff8996!important}
+    body .reaction-chip{background:#1b2a40!important;color:#e7edf7!important;border-color:rgba(210,225,245,.18)!important}
+    body .reaction-chip.mine{background:#203c70!important;border-color:#6c93ff!important}
+  `;
+
+  function applyPortalDarkMode(enabled) {
+    document.documentElement.classList.toggle('portal-dark-mode', enabled);
+    try { localStorage.setItem(PORTAL_THEME_KEY, enabled ? '1' : '0'); } catch (_) {}
+    try { document.cookie = `${PORTAL_THEME_KEY}=${enabled ? '1' : '0'}; Path=/; Max-Age=31536000; SameSite=Lax`; } catch (_) {}
+    const doc = frame.contentDocument;
+    if (!doc?.head) return;
+    const existingTheme = doc.getElementById('portal-dark-theme');
+    if (enabled && !existingTheme) doc.head.append(frameTheme.cloneNode(true));
+    else if (!enabled) existingTheme?.remove();
+  }
+  window.setPortalDarkMode = applyPortalDarkMode;
+  function readPortalPreferences() {
+    try {
+      const value = JSON.parse(localStorage.getItem(PORTAL_PREFERENCES_KEY) || '{}');
+      return value && typeof value === 'object' ? value : {};
+    } catch (_) { return {}; }
+  }
+  function applyPortalPreferences(preferences = readPortalPreferences()) {
+    const compact = Boolean(preferences.compact);
+    document.documentElement.classList.toggle('portal-compact-mode', compact);
+    const doc = frame.contentDocument;
+    if (!doc?.head) return;
+    let style = doc.getElementById('portal-compact-mode-style');
+    if (compact && !style) {
+      style = doc.createElement('style');
+      style.id = 'portal-compact-mode-style';
+      style.textContent = `
+        html.portal-compact-mode body :is(.pane,.card,.subject-card,.chapter-card,.assignment-card,.notice-card,.resource-card,.dashboard-card,.stat-card,.routine-card,.attendance-card){padding:16px!important}
+        html.portal-compact-mode body :is(.config-row,.form-group){margin-bottom:12px!important}
+      `;
+      doc.head.append(style);
+    } else if (!compact) style?.remove();
+    doc.documentElement.classList.toggle('portal-compact-mode', compact);
+  }
+  window.applyPortalPreferences = applyPortalPreferences;
+  applyPortalPreferences();
+  window.addEventListener('storage', (event) => {
+    if (event.key === PORTAL_PREFERENCES_KEY) applyPortalPreferences(readPortalPreferences());
+  });
+  function readPortalDarkMode() {
+    try {
+      const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${PORTAL_THEME_KEY}=([01])`));
+      if (match) return match[1] === '1';
+    } catch (_) {}
+    try { return localStorage.getItem(PORTAL_THEME_KEY) === '1'; } catch (_) { return false; }
+  }
+  applyPortalDarkMode(readPortalDarkMode());
+  window.addEventListener('storage', (event) => {
+    if (event.key === PORTAL_THEME_KEY) applyPortalDarkMode(event.newValue === '1');
+  });
   const navLinks = document.querySelectorAll('#navLinks a');
   const sidebar = document.getElementById('sidebar');
   const scrim = document.getElementById('scrim');
@@ -239,7 +316,8 @@ html{overflow-x:hidden;max-width:100vw;}
   }
 
   function loadRoute(){
-    let route = (window.location.hash || '#dashboard').replace('#','');
+    if (!window.portalAuthReady) return;
+    let route = (window.location.hash || `#${readPortalPreferences().landingPage || 'dashboard'}`).replace('#','');
     if(!routes[route]) route = 'dashboard';
     loader.classList.remove('hide');
     frame.src = routes[route];
@@ -249,10 +327,13 @@ html{overflow-x:hidden;max-width:100vw;}
 
   frame.addEventListener('load', () => {
     loader.classList.add('hide');
+    applyPortalDarkMode(readPortalDarkMode());
+    applyPortalPreferences();
   });
 
   window.addEventListener('hashchange', loadRoute);
   window.addEventListener('DOMContentLoaded', loadRoute);
+  window.loadPortalRoute = loadRoute;
 
   // ---- Mobile nav toggle ----
   function openMobileNav(){ sidebar.classList.add('open'); scrim.classList.add('show'); }
@@ -261,25 +342,94 @@ html{overflow-x:hidden;max-width:100vw;}
   scrim.addEventListener('click', closeMobileNav);
 </script>
 
+<script src="ui-feedback.js"></script>
 <script type="module">
-  import { requireAuth, loadProfile, signOut } from './auth.js';
+  import { requireAuth, loadProfile, signOut, supabase } from './auth.js';
+  import { sendPortalNotification, requestBrowserNotifications } from './portal-notifications.js';
+
+  window.requestPortalNotificationPermission = requestBrowserNotifications;
+
+  function mutedConversationIds() {
+    try { return new Set(JSON.parse(localStorage.getItem('mgm_chat_muted') || '[]')); }
+    catch { return new Set(); }
+  }
+
+  function startPortalNotifications(userId, profile, userMetadata = {}) {
+    const branch = profile?.branch || userMetadata.branch || '';
+    const year = profile?.year || userMetadata.year || '';
+    const blocked = new Set();
+    supabase.from('blocks').select('blocked').eq('blocker', userId)
+      .then(({ data }) => (data || []).forEach((row) => blocked.add(row.blocked)));
+
+    const channel = supabase.channel(`portal-notifications-${userId}`);
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async ({ new: message }) => {
+      if (!message || message.sender_id === userId || blocked.has(message.sender_id)) return;
+      const { data: conversation } = await supabase.from('conversations')
+        .select('id,user_a,user_b,is_group,group_name,cleared_before_a,cleared_before_b')
+        .eq('id', message.conversation_id).maybeSingle();
+      if (!conversation) return;
+      let senderName = 'A student';
+      let title = 'New message';
+      if (conversation.is_group) {
+        const { data: members } = await supabase.from('group_members')
+          .select('user_id,joined_at').eq('conversation_id', conversation.id);
+        const me = members?.find((member) => member.user_id === userId);
+        if (!me || (me.joined_at && new Date(message.created_at) < new Date(me.joined_at))) return;
+        senderName = (await supabase.from('profiles').select('full_name').eq('id', message.sender_id).maybeSingle()).data?.full_name || senderName;
+        title = conversation.group_name || 'New group message';
+      } else {
+        if (conversation.user_a !== userId && conversation.user_b !== userId) return;
+        const clearedBefore = conversation.user_a === userId ? conversation.cleared_before_a : conversation.cleared_before_b;
+        if (clearedBefore && new Date(message.created_at) <= new Date(clearedBefore)) return;
+        senderName = (await supabase.from('profiles').select('full_name').eq('id', message.sender_id).maybeSingle()).data?.full_name || senderName;
+        title = senderName;
+      }
+      if (mutedConversationIds().has(conversation.id)) return;
+      sendPortalNotification(userId, 'community', title, `${senderName} sent you a message.`);
+    });
+
+    const matchesStudent = (row) => (!row.branch || row.branch === branch)
+      && (!row.year || String(row.year) === String(year));
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'academic_assignments' }, ({ new: row }) => {
+      if (matchesStudent(row)) sendPortalNotification(userId, 'academics', 'New assignment', row.title || 'A new assignment was published.');
+    });
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'academic_notices' }, ({ new: row }) => {
+      if (matchesStudent(row)) sendPortalNotification(userId, 'academics', 'New academic notice', row.title || 'A new notice was published.');
+    });
+    channel.subscribe((status) => {
+      const connectionState = status === 'SUBSCRIBED' ? 'connected'
+        : status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' ? 'error' : 'connecting';
+      try { localStorage.setItem(`mgm_portal_notifications_connection_${userId}`, connectionState); } catch { /* ignore */ }
+      if (connectionState === 'error') console.warn('Portal notification connection failed:', status);
+    });
+  }
 
   const session = await requireAuth();           // session nahi to login.html
   if(session){
     let name = session.user.email;
     let roll = 'Signed in';
+    let profile = null;
     try{
       const p = await loadProfile();
-      if(p){ name = p.full_name || name; roll = p.roll_no || roll; }
+      if(p){ profile = p; name = p.full_name || name; roll = p.roll_no || roll; }
     }catch(e){ /* profile baad me bhi load ho jayegi */ }
     document.getElementById('profileName').textContent = name;
     document.getElementById('profileId').textContent = roll;
-    document.getElementById('avatarLetter').textContent = name.trim().charAt(0).toUpperCase() || 'S';
+    const avatar = document.getElementById('avatarLetter');
+    const avatarUrl = session.user.user_metadata?.avatar_url;
+    if (avatarUrl) {
+      const image = document.createElement('img');
+      image.src = avatarUrl; image.alt = 'Profile picture';
+      image.onerror = () => { avatar.textContent = name.trim().charAt(0).toUpperCase() || 'S'; };
+      avatar.replaceChildren(image);
+    } else avatar.textContent = name.trim().charAt(0).toUpperCase() || 'S';
+    startPortalNotifications(session.user.id, profile, session.user.user_metadata || {});
+    window.portalAuthReady = true;
+    window.loadPortalRoute();
   }
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    const shared = confirm('Kya ye shared/public computer hai?\nOK = encryption keys is browser se hata do.\nCancel = normal sign out.');
-    signOut({ wipeKeys: shared });
+    signOut();
   });
 </script>
 

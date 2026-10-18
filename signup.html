@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>MGM College — Student Registration</title>
+<title>MGMCOET Student Registration</title>
+  <link rel="icon" type="image/svg+xml" href="assets/mgmcoet-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -192,6 +193,8 @@ html{overflow-x:hidden;max-width:100vw;}
     line-height:1.4;
     color:var(--ink-dim);
   }
+  .keyword-same-option{display:flex;align-items:center;gap:7px;margin:0 0 8px;color:var(--ink-dim);font-size:11.5px;line-height:1.35;cursor:pointer}
+  .keyword-same-option input{width:14px;height:14px;margin:0;accent-color:var(--cyan);flex:0 0 auto}
   .field label{
     display:block;
     font-size:11.5px;
@@ -450,7 +453,7 @@ html{overflow-x:hidden;max-width:100vw;}
   </div>
 
   <div class="mgm-badge">
-    <div class="name"><span class="dot"></span>MGM <span>College</span></div>
+    <div class="name"><span class="dot"></span>MGMCOET</div>
     <div class="sub">Unofficial Student Portal</div>
   </div>
 
@@ -553,10 +556,14 @@ html{overflow-x:hidden;max-width:100vw;}
 
           <div class="field">
             <label for="signupKeyword">Security keyword</label>
+            <label class="keyword-same-option" for="keywordSameAsPassword">
+              <input type="checkbox" id="keywordSameAsPassword">
+              Use my password as my security keyword
+            </label>
             <div class="input-wrap">
               <input type="text" id="signupKeyword" placeholder="A word only you'd remember" required>
             </div>
-            <div class="field-hint">Naye device par chat keys restore karne ke liye chahiye. Bhoolna mat, ise recover nahi kiya ja sakta.</div>
+            <div class="field-hint">Required to restore your chat keys on a new device. Store it safely; it cannot be recovered.</div>
           </div>
 
           <div class="form-message" id="signupMessage"></div>
@@ -567,7 +574,7 @@ html{overflow-x:hidden;max-width:100vw;}
         <div class="divider">OR</div>
 
         <div class="switch-row">
-          Already have an account? <a href="login.html" class="switch-link">Sign in</a>
+          Already have an account? <a href="https://student-omega-fawn.vercel.app/login.html" class="switch-link">Sign in</a>
         </div>
       </div>
 
@@ -575,7 +582,7 @@ html{overflow-x:hidden;max-width:100vw;}
   </div>
 
 <script type="module">
-  import { signUp, redirectIfLoggedIn } from './auth.js';
+  import { APP_URL, signUp, redirectIfLoggedIn } from './auth.js';
 
   window.togglePassword = function(id, el){
     const input = document.getElementById(id);
@@ -592,6 +599,27 @@ html{overflow-x:hidden;max-width:100vw;}
   const signupMessage = document.getElementById('signupMessage');
   const btn = signupForm.querySelector('.btn-primary');
   const v = (id) => document.getElementById(id).value.trim();
+  const passwordInput = document.getElementById('signupPassword');
+  const keywordInput = document.getElementById('signupKeyword');
+  const sameKeywordOption = document.getElementById('keywordSameAsPassword');
+  let customKeyword = keywordInput.value;
+
+  passwordInput.addEventListener('input', () => {
+    if (sameKeywordOption.checked) keywordInput.value = passwordInput.value;
+  });
+  sameKeywordOption.addEventListener('change', () => {
+    if (sameKeywordOption.checked) {
+      customKeyword = keywordInput.value;
+      keywordInput.value = passwordInput.value;
+      keywordInput.disabled = true;
+    } else {
+      keywordInput.disabled = false;
+      keywordInput.value = customKeyword;
+    }
+  });
+  keywordInput.addEventListener('input', () => {
+    if (!sameKeywordOption.checked) customKeyword = keywordInput.value;
+  });
 
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -615,11 +643,11 @@ html{overflow-x:hidden;max-width:100vw;}
     try{
       const { needsEmailConfirm } = await signUp(data);
       if(needsEmailConfirm){
-        showMessage(signupMessage, 'Account created! Email confirm karo, phir login karo.', 'success');
-        setTimeout(() => { window.location.href = 'login.html'; }, 2500);
+        showMessage(signupMessage, 'Account created. Confirm your email address, then sign in.', 'success');
+        setTimeout(() => { window.location.href = `${APP_URL}/login.html`; }, 2500);
       }else{
         showMessage(signupMessage, 'Account created! Redirecting...', 'success');
-        setTimeout(() => { window.location.href = 'index.html'; }, 900);
+        setTimeout(() => { window.location.href = `${APP_URL}/index.html`; }, 900);
       }
     }catch(err){
       showMessage(signupMessage, err.message || 'Signup failed.', 'error');

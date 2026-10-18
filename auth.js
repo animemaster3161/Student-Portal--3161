@@ -10,12 +10,16 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyDT5PWeMm85EScNPaxU6QoE4VoISPAg4eQ",
   authDomain: "mgm-coet-unoffical.firebaseapp.com",
+  databaseURL: "https://mgm-coet-unoffical-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "mgm-coet-unoffical",
+  storageBucket: "mgm-coet-unoffical.firebasestorage.app",
+  messagingSenderId: "456186174768",
+  appId: "1:456186174768:web:bfb84d17df5ca242ee3cf5",
+  measurementId: "G-2PSJWK1GNM"
 };
 
-// Firebase is only used for the optional email-verification check. Load it
-// only when that check runs, so a blocked Firebase CDN cannot prevent the
-// rest of the portal modules and their button handlers from starting.
+// Load Firebase only when verification runs, so a blocked Firebase CDN does
+// not prevent the rest of the portal modules and their button handlers from starting.
 let firebaseAuthPromise;
 function getFirebaseAuth() {
   if (!firebaseAuthPromise) {
@@ -23,9 +27,8 @@ function getFirebaseAuth() {
       import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"),
       import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js")
     ]).then(([appModule, authModule]) => {
-      const app = appModule.getApps().length
-        ? appModule.getApp()
-        : appModule.initializeApp(firebaseConfig, "authApp");
+      const app = appModule.getApps().find((item) => item.name === 'portal-email-auth')
+        || appModule.initializeApp(firebaseConfig, 'portal-email-auth');
       return { auth: authModule.getAuth(app), ...authModule };
     }).catch(error => {
       firebaseAuthPromise = null;
@@ -102,21 +105,23 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
 
   if (data.user) await saveLocalPrivateKey(data.user.id, identity.privateKey);
 
-  // 3. Firebase ke through user ke Inbox mein 100% verified mail bhejo
+  // 3. Send Firebase verification. Reuse an existing unverified Firebase
+  // account on retries instead of silently losing the email to
+  // auth/email-already-in-use.
+  let firebaseEmailSent = false;
+  let firebaseAlreadyVerified = false;
+  let firebaseEmailError = '';
   try {
-    const firebase = await getFirebaseAuth();
-    const fbCred = await firebase.createUserWithEmailAndPassword(firebase.auth, cleanEmail, password);
-    await firebase.sendEmailVerification(fbCred.user, {
-      url: PRODUCTION_LOGIN_URL,
-      handleCodeInApp: false
-    });
-    await firebase.signOut(firebase.auth);
+    const result = await sendFirebaseVerification(cleanEmail, password, { createIfMissing: true });
+    firebaseAlreadyVerified = result.alreadyVerified;
+    firebaseEmailSent = !result.alreadyVerified;
   } catch (fbErr) {
-    console.warn('Firebase mail warning:', fbErr.message);
+    firebaseEmailError = describeFirebaseEmailError(fbErr);
+    console.error('Firebase verification email failed:', fbErr.code || fbErr.message, fbErr);
   }
 
   await supabase.auth.signOut();
-  return { needsEmailConfirm: true };
+  return { needsEmailConfirm: true, firebaseEmailSent, firebaseAlreadyVerified, firebaseEmailError };
 }
 
 /* ============ Sign in ============ */
@@ -136,6 +141,7 @@ export async function signIn({ id, password }) {
   try {
     const firebase = await getFirebaseAuth();
     const fbCred = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
+    await firebase.reload(fbCred.user);
     if (!fbCred.user.emailVerified) {
       await firebase.signOut(firebase.auth);
       throw new Error('EMAIL_NOT_VERIFIED');
@@ -154,6 +160,85 @@ export async function signIn({ id, password }) {
   const e2eeReady = await hasLocalKey(data.user.id);
   if (e2eeReady) await cleanupSignupMetadata(data.user);
   return { user: data.user, e2eeReady };
+}
+
+function describeFirebaseEmailError(error) {
+  const code = String(error?.code || '');
+  if (code === 'auth/operation-not-allowed') {
+    return 'Firebase Email/Password sign-in is disabled. Enable it in Firebase Authentication settings.';
+  }
+  if (code === 'auth/unauthorized-continue-uri') {
+    return 'Firebase rejected the return URL. Add student-omega-fawn.vercel.app to Firebase Authorized domains.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Firebase temporarily limited email requests. Wait a little and try again.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'A Firebase account already exists for this email, but its password did not match. Use the same password as your portal account or contact support.';
+  }
+  if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+    return 'Firebase could not verify these credentials. Check the email and password, then try again.';
+  }
+  return [code, error?.message].filter(Boolean).join(': ') || 'Firebase could not send the verification email.';
+}
+
+async function sendFirebaseVerification(email, password, { createIfMissing = false } = {}) {
+  const firebase = await getFirebaseAuth();
+  let credential;
+  if (!createIfMissing) {
+    credential = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
+  } else {
+    try {
+      credential = await firebase.createUserWithEmailAndPassword(firebase.auth, email, password);
+    } catch (error) {
+      if (error?.code !== 'auth/email-already-in-use') throw error;
+      credential = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
+    }
+  }
+
+  try {
+    await firebase.reload(credential.user);
+    const alreadyVerified = Boolean(credential.user.emailVerified);
+    if (!alreadyVerified) {
+      await firebase.sendEmailVerification(credential.user, {
+        url: PRODUCTION_LOGIN_URL,
+        handleCodeInApp: false
+      });
+    }
+    return { alreadyVerified };
+  } finally {
+    try { await firebase.signOut(firebase.auth); }
+    catch (error) { console.warn('Firebase sign-out after verification request failed:', error?.message || error); }
+  }
+}
+
+export async function resendVerificationEmail({ id, password }) {
+  if (!id?.trim() || !password) throw new Error('Enter your roll number/email and password first.');
+  const email = await resolveEmail(id);
+  let result;
+  try {
+    result = await sendFirebaseVerification(email, password);
+  } catch (error) {
+    const mayNeedFirebaseAccount = ['auth/user-not-found', 'auth/invalid-credential', 'auth/wrong-password']
+      .includes(error?.code);
+    if (!mayNeedFirebaseAccount) throw new Error(describeFirebaseEmailError(error));
+
+    // If the portal account exists but its Firebase identity was never created
+    // (for example Firebase was unavailable during signup), verify the portal
+    // credentials before creating that Firebase identity here.
+    const { error: portalError } = await supabase.auth.signInWithPassword({ email, password });
+    if (portalError) {
+      throw new Error('Could not verify your portal credentials to set up email verification. Check your password and confirm any portal email link first.');
+    }
+    try {
+      result = await sendFirebaseVerification(email, password, { createIfMissing: true });
+    } catch (firebaseError) {
+      throw new Error(describeFirebaseEmailError(firebaseError));
+    } finally {
+      await supabase.auth.signOut();
+    }
+  }
+  return { email, ...result, sent: !result.alreadyVerified };
 }
 
 /* ============ E2EE unlock ============ */

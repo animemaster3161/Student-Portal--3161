@@ -641,10 +641,15 @@ html{overflow-x:hidden;max-width:100vw;}
     btn.disabled = true;
     showMessage(signupMessage, 'Creating account and generating your encryption keys...', 'success');
     try{
-      const { needsEmailConfirm } = await signUp(data);
+      const { needsEmailConfirm, firebaseEmailSent, firebaseAlreadyVerified, firebaseEmailError } = await signUp(data);
       if(needsEmailConfirm){
-        showMessage(signupMessage, 'Account created. Confirm your email address, then sign in.', 'success');
-        setTimeout(() => { window.location.href = 'login.html'; }, 2500);
+        const emailStatus = firebaseEmailSent
+          ? 'Firebase verification email sent. Check your Inbox and Spam/Junk.'
+          : firebaseAlreadyVerified
+            ? 'Your Firebase email is already verified.'
+            : `Firebase could not send the verification email. ${firebaseEmailError} You can retry it from the sign-in page.`;
+        showMessage(signupMessage, `Account created. ${emailStatus} ${firebaseEmailSent || firebaseAlreadyVerified ? 'Confirm any portal email link too, then sign in.' : ''}`, firebaseEmailSent || firebaseAlreadyVerified ? 'success' : 'error');
+        setTimeout(() => { window.location.href = 'login.html'; }, firebaseEmailSent || firebaseAlreadyVerified ? 3500 : 7000);
       }else{
         showMessage(signupMessage, 'Account created! Redirecting...', 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 900);

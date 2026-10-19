@@ -3,8 +3,7 @@ import { supabase } from './supabase-config.js';
 import {
   createIdentity, restoreIdentity,
   rewrapRecoveryIdentity, rewrapIdentityForRecovery, refreshRecoveryIdentity,
-  getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys,
-  isLocalKeyRemembered, setLocalKeyRemembered
+  getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys
 } from './e2ee.js';
 
 const firebaseConfig = {
@@ -57,7 +56,9 @@ export async function requireAuth() {
   if (!session) { goToLogin(); return null; }
 
   supabase.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') goToLogin();
+    if (event === 'SIGNED_OUT') {
+      wipeLocalKeys(session.user.id).catch(() => {}).finally(goToLogin);
+    }
   });
   return session;
 }
@@ -121,6 +122,7 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   }
 
   await supabase.auth.signOut();
+  if (data.user) { try { await wipeLocalKeys(data.user.id); } catch { /* signup remains complete */ } }
   return {
     needsEmailConfirm: true, emailVerificationSent, emailAlreadyVerified, emailVerificationError,
     keywordBackup: identity.backup,
@@ -264,8 +266,7 @@ export async function unlockWithKeyword(keyword) {
   if (!backup) throw new Error('NO_BACKUP');
 
   const key = await restoreIdentity(backup, keyword);
-  if (isLocalKeyRemembered(user.id)) await saveLocalPrivateKey(user.id, key);
-  else await wipeLocalKeys(user.id);
+  await saveLocalPrivateKey(user.id, key);
   try { await cleanupSignupMetadata(user); } catch { /* ignore */ }
   return key;
 }
@@ -282,8 +283,7 @@ export async function unlockWithRecoveryFile(file, password) {
     throw new Error('INVALID_RECOVERY_FILE');
   }
   const key = await restoreIdentity(recovery.backup, password, recovery.format === 'mgm-chat-recovery-v1');
-  if (isLocalKeyRemembered(session.user.id)) await saveLocalPrivateKey(session.user.id, key);
-  else await wipeLocalKeys(session.user.id);
+  await saveLocalPrivateKey(session.user.id, key);
   return key;
 }
 
@@ -384,10 +384,6 @@ async function verifyAccountPassword(session, password) {
   if (error) throw new Error('WRONG_ACCOUNT_PASSWORD');
 }
 
-export async function setChatKeyRemembered(userId, remember) {
-  await setLocalKeyRemembered(userId, remember);
-}
-
 async function cleanupSignupMetadata(user) {
   if (user.user_metadata?.key_backup) {
     await supabase.auth.updateUser({ data: { key_backup: null, public_key: null } });
@@ -396,14 +392,16 @@ async function cleanupSignupMetadata(user) {
 
 /* ============ Sign out ============ */
 
-export async function signOut({ wipeKeys = false } = {}) {
+export async function signOut() {
   const session = await getSession();
-  if (wipeKeys && session) await wipeLocalKeys(session.user.id);
+  if (session) { try { await wipeLocalKeys(session.user.id); } catch { /* still sign out */ } }
   await supabase.auth.signOut();
   goToLogin();
 }
 
 export async function signOutEverywhere() {
+  const session = await getSession();
+  if (session) { try { await wipeLocalKeys(session.user.id); } catch { /* still sign out */ } }
   await supabase.auth.signOut({ scope: 'global' });
   goToLogin();
 }

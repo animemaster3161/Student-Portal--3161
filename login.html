@@ -560,8 +560,8 @@
 
         <div class="options-row">
           <label class="checkbox-wrap">
-            <input type="checkbox" id="rememberMe">
-            Remember this device
+            <input type="checkbox" checked disabled aria-label="Remember this device until sign out">
+            Remember this device (until sign out)
           </label>
           <a href="forgot_password.html" class="forgot-link">Forgot password?</a>
         </div>
@@ -582,7 +582,7 @@
   </div>
 
   <script type="module">
-    import { signIn, redirectIfLoggedIn, setChatKeyRemembered } from './auth.js';
+    import { signIn, redirectIfLoggedIn } from './auth.js';
 
     window.togglePassword = function (id, el) {
       const input = document.getElementById(id);
@@ -609,7 +609,6 @@
       showMessage(loginMessage, 'Authenticating...', 'success');
       try {
         const { user } = await signIn({ id, password });
-        await setChatKeyRemembered(user.id, document.getElementById('rememberMe').checked);
         showMessage(loginMessage, 'Success! Redirecting to your dashboard...', 'success');
         setTimeout(() => { window.location.href = 'index.html'; }, 600);
       } catch (err) {

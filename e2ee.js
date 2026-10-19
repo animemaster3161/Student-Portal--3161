@@ -39,19 +39,8 @@ async function idbRun(mode, fn) {
 }
 
 export function isLocalKeyRemembered(uid) {
-  try {
-    const preference = localStorage.getItem(`${REMEMBER_KEY_PREFIX}${uid}`);
-    // Existing signed-in devices keep their current behavior until the user
-    // next chooses Remember this device on the login page.
-    return preference !== '0';
-  } catch { return true; }
-}
-
-export async function setLocalKeyRemembered(uid, remember) {
-  try { localStorage.setItem(`${REMEMBER_KEY_PREFIX}${uid}`, remember ? '1' : '0'); } catch { /* ignore */ }
-  if (!remember) {
-    try { await wipeLocalKeys(uid); } catch { /* the current page still has its in-memory key */ }
-  }
+  try { return localStorage.getItem(`${REMEMBER_KEY_PREFIX}${uid}`) === '1'; }
+  catch { return false; }
 }
 
 async function readRememberedKey(uid) {
@@ -68,11 +57,16 @@ export async function getLocalPrivateKey(uid) {
 }
 
 export const saveLocalPrivateKey = async (uid, key) => {
-  // Remember the chat key on this browser/device until the user opts out.
+  // Keep the chat key on this browser/device until the portal session ends.
   try { await navigator.storage?.persist?.(); } catch { /* ignore */ }
-  return idbRun('readwrite', (s) => s.put(key, `priv:${uid}`));
+  const result = await idbRun('readwrite', (s) => s.put(key, `priv:${uid}`));
+  try { localStorage.setItem(`${REMEMBER_KEY_PREFIX}${uid}`, '1'); } catch { /* ignore */ }
+  return result;
 };
-export const wipeLocalKeys       = (uid)      => idbRun('readwrite', (s) => s.delete(`priv:${uid}`));
+export async function wipeLocalKeys(uid) {
+  try { localStorage.removeItem(`${REMEMBER_KEY_PREFIX}${uid}`); } catch { /* ignore */ }
+  return idbRun('readwrite', (s) => s.delete(`priv:${uid}`));
+}
 
 /* ---------------- Keyword -> AES wrap key ---------------- */
 async function deriveWrapKey(password, salt, iterations, normalizeKeyword = true) {

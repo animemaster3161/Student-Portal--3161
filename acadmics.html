@@ -2835,9 +2835,13 @@
             }
             const extension = fileUrl.pathname.split('.').pop().toLowerCase();
             const officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+            const mobilePdf = extension === 'pdf'
+                && (window.matchMedia('(max-width: 700px)').matches || navigator.maxTouchPoints > 0);
             viewerFrame.src = officeExtensions.includes(extension)
                 ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl.href)}`
-                : fileUrl.href;
+                : mobilePdf
+                    ? `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(fileUrl.href)}`
+                    : fileUrl.href;
             document.getElementById('documentViewerTitle').textContent = link.dataset.viewTitle || link.textContent.trim() || 'Document';
             const openLink = document.getElementById('documentViewerOpen');
             openLink.href = fileUrl.href;

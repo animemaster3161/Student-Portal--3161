@@ -1,8 +1,9 @@
 // e2ee.js
 // - ECDH P-256 key pair (chat ke liye shared secret derive hota hai)
 // - Private key: IndexedDB me NON-EXTRACTABLE CryptoKey ke roop me (JS se read/export nahi hoti)
-// - Recovery backup: private key ko Security Keyword se encrypt karke (PBKDF2 -> AES-GCM) Supabase me rakhte hain.
-//   Server ko sirf encrypted blob dikhta hai, keyword kabhi server tak nahi jaata.
+// - Server backup: private key is wrapped with the Security Keyword (PBKDF2 -> AES-GCM).
+// - Downloadable recovery backup: a second wrap uses the account password, so the file can restore the key after a keyword reset.
+//   Both copies contain ciphertext only; passwords and plaintext key stay in the browser.
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -74,9 +75,11 @@ export const saveLocalPrivateKey = async (uid, key) => {
 export const wipeLocalKeys       = (uid)      => idbRun('readwrite', (s) => s.delete(`priv:${uid}`));
 
 /* ---------------- Keyword -> AES wrap key ---------------- */
-async function deriveWrapKey(keyword, salt, iterations) {
-  const norm = keyword.trim().toLowerCase().normalize('NFKC');
-  const base = await crypto.subtle.importKey('raw', enc.encode(norm), 'PBKDF2', false, ['deriveKey']);
+async function deriveWrapKey(password, salt, iterations, normalizeKeyword = true) {
+  const secret = normalizeKeyword
+    ? String(password).trim().toLowerCase().normalize('NFKC')
+    : String(password);
+  const base = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     base,
@@ -86,10 +89,10 @@ async function deriveWrapKey(keyword, salt, iterations) {
   );
 }
 
-async function wrapPrivateJwk(privJwk, keyword) {
+async function wrapPrivateJwk(privJwk, password, normalizeKeyword = true) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv   = crypto.getRandomValues(new Uint8Array(12));
-  const wrapKey = await deriveWrapKey(keyword, salt, PBKDF2_ITERATIONS);
+  const wrapKey = await deriveWrapKey(password, salt, PBKDF2_ITERATIONS, normalizeKeyword);
   const ct = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     wrapKey,
@@ -100,32 +103,72 @@ async function wrapPrivateJwk(privJwk, keyword) {
 
 /* ---------------- Public API ---------------- */
 
-/** Naya identity: key pair + keyword-encrypted backup. */
-export async function createIdentity(keyword) {
+/** New identity: key pair + keyword-wrapped server backup + account-password-wrapped recovery copy. */
+export async function createIdentity(keyword, accountPassword = keyword) {
   const pair = await crypto.subtle.generateKey(CURVE, true, KEY_USAGES);
   const privJwk   = await crypto.subtle.exportKey('jwk', pair.privateKey);
   const publicJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
   const backup    = await wrapPrivateJwk(privJwk, keyword);
+  const recoveryBackup = await wrapPrivateJwk(privJwk, accountPassword, false);
 
   // Storage ke liye non-extractable copy
   const privateKey = await crypto.subtle.importKey('jwk', privJwk, CURVE, false, KEY_USAGES);
-  return { publicJwk, backup, privateKey };
+  return { publicJwk, backup, recoveryBackup, privateKey };
 }
 
 /** Backup + keyword se private key wapas. Galat keyword par 'WRONG_KEYWORD' throw. */
-export async function restoreIdentity(backup, keyword) {
+export async function restoreIdentity(backup, password, normalizeKeyword = true) {
+  const privJwk = await unwrapPrivateJwk(backup, password, normalizeKeyword);
+  return crypto.subtle.importKey('jwk', privJwk, CURVE, false, KEY_USAGES);
+}
+
+async function unwrapPrivateJwk(backup, password, normalizeKeyword = true) {
   try {
-    const wrapKey = await deriveWrapKey(keyword, unb64(backup.salt), backup.iterations);
+    if (!backup?.salt || !backup?.iv || !backup?.wrapped_key ||
+        !Number.isInteger(backup.iterations) || backup.iterations < 100000 || backup.iterations > 1000000) {
+      throw new Error('INVALID_BACKUP');
+    }
+    const wrapKey = await deriveWrapKey(password, unb64(backup.salt), backup.iterations, normalizeKeyword);
     const plain = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: unb64(backup.iv) },
       wrapKey,
       unb64(backup.wrapped_key)
     );
     const privJwk = JSON.parse(dec.decode(plain));
-    return await crypto.subtle.importKey('jwk', privJwk, CURVE, false, KEY_USAGES);
+    if (privJwk.kty !== 'EC' || privJwk.crv !== 'P-256' || !privJwk.d) throw new Error('INVALID_BACKUP');
+    await crypto.subtle.importKey('jwk', privJwk, CURVE, false, KEY_USAGES);
+    return privJwk;
   } catch (e) {
+    if (e?.message === 'INVALID_BACKUP') throw e;
     throw new Error('WRONG_KEYWORD');
   }
+}
+
+/** Rewrap the same chat identity under a new keyword and account password. */
+export async function rewrapRecoveryIdentity(backup, accountPassword, newKeyword) {
+  const privJwk = await unwrapPrivateJwk(backup, accountPassword, false);
+  return {
+    keywordBackup: await wrapPrivateJwk(privJwk, newKeyword),
+    recoveryBackup: await wrapPrivateJwk(privJwk, accountPassword, false)
+  };
+}
+
+/** Make both fresh wrappers after a normal keyword change. */
+export async function rewrapIdentityForRecovery(backup, currentKeyword, newKeyword, accountPassword) {
+  const privJwk = await unwrapPrivateJwk(backup, currentKeyword);
+  return {
+    keywordBackup: await wrapPrivateJwk(privJwk, newKeyword),
+    recoveryBackup: await wrapPrivateJwk(privJwk, accountPassword, false)
+  };
+}
+
+/** Refresh only the account-password-encrypted copy after an account password change. */
+export async function refreshRecoveryIdentity(backup, currentKeyword, accountPassword) {
+  const privJwk = await unwrapPrivateJwk(backup, currentKeyword);
+  return {
+    keywordBackup: backup,
+    recoveryBackup: await wrapPrivateJwk(privJwk, accountPassword, false)
+  };
 }
 
 /** Re-encrypt an existing identity backup under a replacement keyword. */

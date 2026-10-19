@@ -183,10 +183,10 @@ function ensureUnlockUI() {
       <h3><span><i class="fas fa-lock" style="cursor:default;color:var(--blue);margin-right:8px"></i>Unlock chat</span>
         <i class="fas fa-xmark" id="unlockClose"></i></h3>
       <p class="modal-subtext" style="margin:-6px 0 14px">
-        No encryption key was found on this device. Enter the Security Keyword you created during sign-up.
+        No encryption key was found on this device. Enter your Security Keyword, or choose a Recovery Codes file and enter your account password.
         Choose 'Remember this device' at sign-in to keep the key here and avoid future prompts. Each device needs its own first unlock.</p>
-      <input type="password" class="modal-input" id="unlockInput" placeholder="Security Keyword" autocomplete="off">
-      <label for="recoveryFileInput" style="display:block;margin-top:12px;color:var(--ink-soft);font-size:12px">Or choose your password-protected Recovery Codes file</label>
+      <input type="password" class="modal-input" id="unlockInput" placeholder="Security Keyword / account password" autocomplete="current-password">
+      <label for="recoveryFileInput" style="display:block;margin-top:12px;color:var(--ink-soft);font-size:12px">Optional: choose Recovery Codes JSON (new files use your account password; older v1 files may use the security keyword)</label>
       <input type="file" id="recoveryFileInput" accept=".json,application/json" style="display:block;width:100%;margin-top:6px;font-size:12px;color:var(--ink-soft)">
       <a href="change_keyword.html" style="display:block;text-align:center;margin-top:10px;color:var(--blue);font-size:12px;text-decoration:none">
         Forgot keyword? Recovery options</a>
@@ -243,7 +243,7 @@ async function doUnlock() {
       ? await unlockWithRecoveryFile(recoveryFile, kw)
       : await unlockWithKeyword(kw);
   } catch (e) {
-    err.textContent = e.message === 'WRONG_KEYWORD' ? 'Incorrect keyword. Please try again.'
+    err.textContent = e.message === 'WRONG_KEYWORD' ? (recoveryFile ? 'Account password does not unlock this Recovery Codes file.' : 'Incorrect keyword. Please try again.')
       : e.message === 'NO_BACKUP' ? 'No key backup was found for this account.'
       : e.message === 'INVALID_RECOVERY_FILE' ? 'That file is not a valid MGM chat Recovery Codes file.'
       : 'Unable to unlock: ' + (e.message || 'Unknown error');

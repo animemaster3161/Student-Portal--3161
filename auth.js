@@ -2,7 +2,7 @@
 import { supabase } from './supabase-config.js';
 import {
   createIdentity, restoreIdentity,
-  rewrapIdentityBackup,
+  rewrapRecoveryIdentity, rewrapIdentityForRecovery, refreshRecoveryIdentity,
   getLocalPrivateKey, saveLocalPrivateKey, wipeLocalKeys,
   isLocalKeyRemembered, setLocalKeyRemembered
 } from './e2ee.js';
@@ -80,7 +80,7 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   const cleanEmail = email.trim().toLowerCase();
 
   // 1. E2EE Keys generate karo
-  const identity = await createIdentity(keyword);
+  const identity = await createIdentity(keyword, password);
 
   // 2. Supabase mein user profile, roll number aur keys save karo
   const { data, error } = await supabase.auth.signUp({
@@ -123,7 +123,8 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   await supabase.auth.signOut();
   return {
     needsEmailConfirm: true, emailVerificationSent, emailAlreadyVerified, emailVerificationError,
-    recoveryBackup: identity.backup
+    keywordBackup: identity.backup,
+    recoveryBackup: identity.recoveryBackup
   };
 }
 
@@ -269,17 +270,18 @@ export async function unlockWithKeyword(keyword) {
   return key;
 }
 
-export async function unlockWithRecoveryFile(file, keyword) {
+export async function unlockWithRecoveryFile(file, password) {
   const session = await getSession();
   if (!session) throw new Error('NOT_LOGGED_IN');
+  if (!file || file.size > 1024 * 1024) throw new Error('INVALID_RECOVERY_FILE');
   let recovery;
   try {
     recovery = JSON.parse(await file.text());
-    if (recovery?.format !== 'mgm-chat-recovery-v1' || !recovery.backup) throw new Error('INVALID_FILE');
+    if (!recovery?.backup || !['mgm-chat-recovery-v1', 'mgm-chat-recovery-v2', 'mgm-chat-recovery-v3'].includes(recovery.format)) throw new Error('INVALID_FILE');
   } catch {
     throw new Error('INVALID_RECOVERY_FILE');
   }
-  const key = await restoreIdentity(recovery.backup, keyword);
+  const key = await restoreIdentity(recovery.backup, password, recovery.format === 'mgm-chat-recovery-v1');
   if (isLocalKeyRemembered(session.user.id)) await saveLocalPrivateKey(session.user.id, key);
   else await wipeLocalKeys(session.user.id);
   return key;
@@ -296,13 +298,8 @@ export async function changeSecurityKeyword({ currentPassword, currentKeyword, n
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const session = sessionData?.session;
-  if (sessionError || !session?.user?.email) throw new Error('NOT_LOGGED_IN');
-
-  const { error: passwordError } = await supabase.auth.signInWithPassword({
-    email: session.user.email,
-    password: currentPassword
-  });
-  if (passwordError) throw new Error('WRONG_ACCOUNT_PASSWORD');
+  if (sessionError || !session?.user?.id) throw new Error('NOT_LOGGED_IN');
+  await verifyAccountPassword(session, currentPassword);
 
   const { data: backup, error: backupError } = await supabase
     .from('key_backups').select('wrapped_key,salt,iv,iterations')
@@ -310,7 +307,65 @@ export async function changeSecurityKeyword({ currentPassword, currentKeyword, n
   if (backupError) throw backupError;
   if (!backup) throw new Error('NO_BACKUP');
 
-  const nextBackup = await rewrapIdentityBackup(backup, currentKeyword, newKeyword);
+  const next = await rewrapIdentityForRecovery(backup, currentKeyword, newKeyword, currentPassword);
+  await rotateKeyBackup(backup, next.keywordBackup);
+  try { await cleanupSignupMetadata(session.user); } catch { /* ignore legacy metadata cleanup failure */ }
+  return { keywordBackup: next.keywordBackup, recoveryBackup: next.recoveryBackup };
+}
+
+export async function resetSecurityKeywordWithRecoveryFile({ currentPassword, recoveryFile, newKeyword }) {
+  if (!currentPassword || !recoveryFile || !newKeyword?.trim()) throw new Error('MISSING_RECOVERY_FIELDS');
+  if (recoveryFile.size > 1024 * 1024) throw new Error('INVALID_RECOVERY_FILE');
+  if (newKeyword.trim().length < 6) throw new Error('KEYWORD_TOO_SHORT');
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session?.user?.id) throw new Error('NOT_LOGGED_IN');
+  await verifyAccountPassword(session, currentPassword);
+
+  let recovery;
+  try {
+    recovery = JSON.parse(await recoveryFile.text());
+    if (recovery?.format === 'mgm-chat-recovery-v1') throw new Error('LEGACY_RECOVERY_FILE');
+    if (!['mgm-chat-recovery-v2', 'mgm-chat-recovery-v3'].includes(recovery?.format) || !recovery.backup) throw new Error('INVALID_FILE');
+  } catch {
+    if (recovery?.format === 'mgm-chat-recovery-v1') throw new Error('LEGACY_RECOVERY_FILE');
+    throw new Error('INVALID_RECOVERY_FILE');
+  }
+  const { data: backup, error: backupError } = await supabase
+    .from('key_backups').select('wrapped_key,salt,iv,iterations')
+    .eq('user_id', session.user.id).maybeSingle();
+  if (backupError) throw backupError;
+  if (!backup) throw new Error('NO_BACKUP');
+
+  let next;
+  try { next = await rewrapRecoveryIdentity(recovery.backup, currentPassword, newKeyword); }
+  catch (error) {
+    if (error.message === 'WRONG_KEYWORD') throw new Error('WRONG_RECOVERY_PASSWORD');
+    throw error;
+  }
+  await rotateKeyBackup(backup, next.keywordBackup);
+  try { await cleanupSignupMetadata(session.user); } catch { /* ignore legacy metadata cleanup failure */ }
+  return { keywordBackup: next.keywordBackup, recoveryBackup: next.recoveryBackup };
+}
+
+export async function refreshRecoveryCodes({ currentPassword, currentKeyword }) {
+  if (!currentPassword || !currentKeyword?.trim()) throw new Error('MISSING_KEYWORD_FIELDS');
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session?.user?.id) throw new Error('NOT_LOGGED_IN');
+  await verifyAccountPassword(session, currentPassword);
+
+  const { data: backup, error: backupError } = await supabase
+    .from('key_backups').select('wrapped_key,salt,iv,iterations')
+    .eq('user_id', session.user.id).maybeSingle();
+  if (backupError) throw backupError;
+  if (!backup) throw new Error('NO_BACKUP');
+
+  const next = await refreshRecoveryIdentity(backup, currentKeyword, currentPassword);
+  return { keywordBackup: next.keywordBackup, recoveryBackup: next.recoveryBackup };
+}
+
+async function rotateKeyBackup(backup, nextBackup) {
   const { error: updateError } = await supabase.rpc('rotate_my_key_backup', {
     p_expected_salt: backup.salt,
     p_wrapped_key: nextBackup.wrapped_key,
@@ -319,6 +374,14 @@ export async function changeSecurityKeyword({ currentPassword, currentKeyword, n
     p_iterations: nextBackup.iterations
   });
   if (updateError) throw updateError;
+}
+
+async function verifyAccountPassword(session, password) {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: session.user.email,
+    password
+  });
+  if (error) throw new Error('WRONG_ACCOUNT_PASSWORD');
 }
 
 export async function setChatKeyRemembered(userId, remember) {

@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="password-recovery.css">
+  <style>
+    #downloadRecoveryLink{display:block;text-align:center;text-decoration:none;margin-top:14px}
+    #downloadRecoveryLink[hidden],#cloudRecoveryLink[hidden]{display:none!important}
+  </style>
 </head>
 <body>
   <div class="bg-wrap" aria-hidden="true">
@@ -26,21 +30,23 @@
     <section class="card" aria-labelledby="pageTitle">
       <div class="eyebrow">Chat encryption</div>
       <h1 id="pageTitle">Change security keyword</h1>
-      <p class="tagline">To change your keyword and keep your existing chats, verify your portal password and provide your current security keyword.</p>
+      <p class="tagline">Change your chat security keyword with your current keyword, or recover it using your Recovery Codes file and account password.</p>
 
       <div id="historyNotice" class="form-message info" role="alert" aria-live="assertive">
-        Without your current security keyword, your portal password cannot recover the encryption key. Your old encrypted chats cannot be restored after a key reset.
+        The Recovery Codes file is encrypted with your account password. If you have the file and account password, you can restore your existing chat key without the old security keyword.
       </div>
       <div id="statusMessage" class="form-message" role="status" aria-live="polite"></div>
 
       <form id="keywordForm" hidden novalidate>
+        <section id="changeKeywordPanel">
+        <h2 style="font-size:15px;margin:4px 0 12px">Change keyword</h2>
         <div class="field">
-          <label for="accountPassword">Current account password</label>
+          <label for="accountPassword">Account password</label>
           <input id="accountPassword" type="password" autocomplete="current-password" required>
         </div>
         <div class="field">
           <label for="currentKeyword">Current security keyword (required to keep existing chats)</label>
-          <input id="currentKeyword" type="password" autocomplete="current-password">
+          <input id="currentKeyword" type="password" autocomplete="current-password" required>
         </div>
         <div class="field">
           <label for="newKeyword">New security keyword</label>
@@ -51,7 +57,23 @@
           <input id="confirmKeyword" type="password" autocomplete="new-password" minlength="6" required>
         </div>
         <button id="saveKeywordButton" class="btn-primary" type="submit">Update security keyword</button>
+        <button id="refreshRecoveryButton" class="btn-primary" type="button" style="margin-top:10px;background:linear-gradient(135deg,#9cc8ff,#c7a7ff)">Refresh Recovery Codes after password change</button>
+        <p style="text-align:center;margin:14px 0 0;font-size:13px">Forgot your current keyword? <a href="#recover" id="forgotKeywordLink" style="color:#74dff2">Use Recovery Codes</a></p>
+        </section>
+
+        <section id="recoverKeywordPanel" hidden>
+          <h2 style="font-size:15px;margin:4px 0 12px">Forgot keyword</h2>
+          <div class="field"><label for="recoveryAccountPassword">Account password</label><input id="recoveryAccountPassword" type="password" autocomplete="current-password"></div>
+          <div class="field"><label for="recoveryFile">Recovery Codes file</label><input id="recoveryFile" type="file" accept=".json,application/json" style="width:100%"></div>
+          <div class="field"><label for="recoveryNewKeyword">New security keyword</label><input id="recoveryNewKeyword" type="password" autocomplete="new-password" minlength="6"></div>
+          <div class="field"><label for="recoveryConfirmKeyword">Confirm new security keyword</label><input id="recoveryConfirmKeyword" type="password" autocomplete="new-password" minlength="6"></div>
+          <button id="recoverKeywordButton" class="btn-primary" type="button">Restore chat key and reset keyword</button>
+          <p style="text-align:center;margin:14px 0 0;font-size:13px">Remember your keyword? <a href="#change" id="backToChangeLink" style="color:#74dff2">Change it with current keyword</a></p>
+        </section>
       </form>
+
+      <a id="downloadRecoveryLink" class="btn-primary" hidden>Download updated Recovery Codes</a>
+      <a id="cloudRecoveryLink" hidden target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;margin-top:12px;color:#74dff2;overflow-wrap:anywhere">View encrypted Cloudinary backup</a>
 
       <nav class="page-links" aria-label="Account links">
         <a id="loginLink" href="login.html" hidden>Sign in</a>
@@ -61,7 +83,8 @@
   </main>
 
   <script type="module">
-    import { changeSecurityKeyword, getSession } from './auth.js';
+    import { changeSecurityKeyword, resetSecurityKeywordWithRecoveryFile, refreshRecoveryCodes, getSession } from './auth.js';
+    import { makeRecoveryCodes, recoveryCodesBlob, uploadRecoveryCodes } from './recovery-codes.js';
 
     const status = document.getElementById('statusMessage');
     const historyNotice = document.getElementById('historyNotice');
@@ -70,21 +93,65 @@
     const button = document.getElementById('saveKeywordButton');
     const loginLink = document.getElementById('loginLink');
     const communityLink = document.getElementById('communityLink');
+    const downloadRecoveryLink = document.getElementById('downloadRecoveryLink');
+    const cloudRecoveryLink = document.getElementById('cloudRecoveryLink');
+    const changePanel = document.getElementById('changeKeywordPanel');
+    const recoverPanel = document.getElementById('recoverKeywordPanel');
 
     function showMessage(text, type) {
       status.textContent = text;
       status.className = `form-message show ${type}`;
     }
 
+    function setMode(recovering) {
+      changePanel.hidden = recovering;
+      recoverPanel.hidden = !recovering;
+      historyNotice.classList.toggle('show', recovering);
+      status.className = 'form-message';
+    }
+
+    async function finishRotation(result, sourceFile = null, hideForm = true, successText = 'Keyword updated.') {
+      const codes = makeRecoveryCodes(result.keywordBackup, result.recoveryBackup);
+      const blob = recoveryCodesBlob(codes);
+      if (downloadRecoveryLink.dataset.url) URL.revokeObjectURL(downloadRecoveryLink.dataset.url);
+      const localUrl = URL.createObjectURL(blob);
+      downloadRecoveryLink.dataset.url = localUrl;
+      downloadRecoveryLink.href = localUrl;
+      downloadRecoveryLink.download = 'MGMCOET-Recovery-Codes.json';
+      downloadRecoveryLink.hidden = false;
+
+      const uploads = await Promise.allSettled([
+        ...(sourceFile ? [uploadRecoveryCodes(sourceFile, 'MGMCOET-Recovery-Codes-previous.json')] : []),
+        uploadRecoveryCodes(codes)
+      ]);
+      const currentBackupResult = uploads[uploads.length - 1];
+      if (currentBackupResult.status === 'fulfilled') {
+        cloudRecoveryLink.href = currentBackupResult.value;
+        cloudRecoveryLink.hidden = false;
+      }
+      const failedUpload = uploads.find((upload) => upload.status === 'rejected');
+      showMessage(failedUpload
+        ? `${successText} Download the new Recovery Codes file now. Cloudinary upload failed: ${failedUpload.reason?.message || failedUpload.reason}`
+        : `${successText} Download the new Recovery Codes file. The encrypted backup was also uploaded to Cloudinary.`, failedUpload ? 'error' : 'success');
+      if (hideForm) {
+        form.hidden = true;
+        historyNotice.classList.remove('show');
+        communityLink.textContent = 'Return to chat';
+      }
+    }
+
     let session = null;
     try { session = await getSession(); } catch { /* show sign-in link below */ }
     if (!session) {
-      showMessage('Sign in to your portal account first. The current security keyword is required to keep existing chats.', 'error');
+      showMessage('Sign in to your portal account first.', 'error');
       loginLink.hidden = false;
       communityLink.hidden = true;
     } else {
       form.hidden = false;
     }
+
+    document.getElementById('forgotKeywordLink').addEventListener('click', (event) => { event.preventDefault(); setMode(true); });
+    document.getElementById('backToChangeLink').addEventListener('click', (event) => { event.preventDefault(); setMode(false); });
 
     currentKeywordInput.addEventListener('input', () => {
       if (currentKeywordInput.value.trim()) historyNotice.classList.remove('show');
@@ -97,15 +164,16 @@
       const newKeyword = document.getElementById('newKeyword').value;
       const confirmation = document.getElementById('confirmKeyword').value;
 
-      if (!currentKeyword.trim()) {
-        historyNotice.classList.add('show');
-        currentKeywordInput.focus();
-        return;
-      }
       historyNotice.classList.remove('show');
 
+      if (!currentKeyword.trim()) {
+        currentKeywordInput.focus();
+        showMessage('Current security keyword is required to change it and preserve your existing chats.', 'error');
+        return;
+      }
+
       if (!currentPassword) {
-        showMessage('Enter your current account password.', 'error');
+        showMessage('Enter your account password to create the updated Recovery Codes file.', 'error');
         return;
       }
 
@@ -121,11 +189,8 @@
       button.disabled = true;
       button.textContent = 'Updating…';
       try {
-        await changeSecurityKeyword({ currentPassword, currentKeyword, newKeyword });
-        form.hidden = true;
-        historyNotice.classList.remove('show');
-        communityLink.textContent = 'Return to chat';
-        showMessage('Security keyword updated. Your existing encrypted chats are preserved. Use the new keyword on devices that need unlocking.', 'success');
+        const result = await changeSecurityKeyword({ currentPassword, currentKeyword, newKeyword });
+        await finishRotation(result);
       } catch (error) {
         const messages = {
           WRONG_ACCOUNT_PASSWORD: 'The account password is incorrect.',
@@ -140,6 +205,67 @@
       } finally {
         button.disabled = false;
         button.textContent = 'Update security keyword';
+      }
+    });
+
+    document.getElementById('refreshRecoveryButton').addEventListener('click', async () => {
+      const currentPassword = document.getElementById('accountPassword').value;
+      const currentKeyword = document.getElementById('currentKeyword').value;
+      if (!currentPassword) { showMessage('Enter your account password.', 'error'); return; }
+      if (!currentKeyword.trim()) { currentKeywordInput.focus(); showMessage('Current security keyword is required.', 'error'); return; }
+      const refreshButton = document.getElementById('refreshRecoveryButton');
+      refreshButton.disabled = true;
+      try {
+        const result = await refreshRecoveryCodes({ currentPassword, currentKeyword });
+        await finishRotation(result, null, false, 'Recovery Codes refreshed.');
+      } catch (error) {
+        const messages = {
+          WRONG_ACCOUNT_PASSWORD: 'The account password is incorrect.',
+          WRONG_KEYWORD: 'The current security keyword is incorrect.',
+          NO_BACKUP: 'No encrypted key backup was found for this account.',
+          NOT_LOGGED_IN: 'Your session expired. Sign in and try again.'
+        };
+        showMessage(messages[error.message] || `Unable to refresh Recovery Codes: ${error.message || 'Please try again.'}`, 'error');
+      } finally {
+        refreshButton.disabled = false;
+      }
+    });
+
+    document.getElementById('recoverKeywordButton').addEventListener('click', async () => {
+      const currentPassword = document.getElementById('recoveryAccountPassword').value;
+      const recoveryFile = document.getElementById('recoveryFile').files?.[0];
+      const newKeyword = document.getElementById('recoveryNewKeyword').value;
+      const confirmation = document.getElementById('recoveryConfirmKeyword').value;
+      if (!currentPassword || !recoveryFile) { showMessage('Enter your account password and choose the Recovery Codes file.', 'error'); return; }
+      if (newKeyword.trim().length < 6) { showMessage('New security keyword must contain at least 6 characters.', 'error'); return; }
+      if (newKeyword !== confirmation) { showMessage('The new security keywords do not match.', 'error'); return; }
+      const recoverButton = document.getElementById('recoverKeywordButton');
+      recoverButton.disabled = true;
+      recoverButton.textContent = 'Restoring chat key…';
+      try {
+        const result = await resetSecurityKeywordWithRecoveryFile({ currentPassword, recoveryFile, newKeyword });
+        await finishRotation(result, recoveryFile);
+      } catch (error) {
+        const messages = {
+          WRONG_ACCOUNT_PASSWORD: 'The account password is incorrect.',
+          WRONG_RECOVERY_PASSWORD: 'The account password does not unlock this Recovery Codes file.',
+          LEGACY_RECOVERY_FILE: 'This older file is encrypted with the old security keyword. It cannot recover a forgotten keyword; use it with the old keyword to create a new Recovery Codes file.',
+          INVALID_RECOVERY_FILE: 'Choose a valid MGMCOET Recovery Codes JSON file.',
+          KEYWORD_TOO_SHORT: 'New security keyword must contain at least 6 characters.',
+          NO_BACKUP: 'No encrypted key backup was found for this account.',
+          NOT_LOGGED_IN: 'Your session expired. Sign in and try again.'
+        };
+        showMessage(messages[error.message] || `Unable to restore the key: ${error.message || 'Please try again.'}`, 'error');
+      } finally {
+        recoverButton.disabled = false;
+        recoverButton.textContent = 'Restore chat key and reset keyword';
+      }
+    });
+
+    recoverPanel.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && event.target.matches('input:not([type="file"])')) {
+        event.preventDefault();
+        document.getElementById('recoverKeywordButton').click();
       }
     });
   </script>

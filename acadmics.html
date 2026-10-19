@@ -1860,9 +1860,6 @@
         @media (hover: none) and (pointer: coarse) {
             .video-frame .player-controls {
                 padding: 30px 8px calc(8px + env(safe-area-inset-bottom));
-                opacity: 1;
-                transform: none;
-                transition: none;
             }
 
             .video-frame .controls-row { gap: 4px; }
@@ -2237,6 +2234,7 @@
 
         let activeSubjectKey = null;
         let activeChapterIndex = null;
+        let playerHistoryEntry = false;
 
         /* ============ VIEW SWITCHING ============ */
         function showView(id) {
@@ -2425,12 +2423,29 @@
         }
 
         function backToChapters() {
+            if (!activeSubjectKey) return;
+            if (playerHistoryEntry) {
+                playerHistoryEntry = false;
+                try { history.replaceState({ ...(history.state || {}), academicView: "chapters" }, "", location.href); } catch (_) { }
+            }
             openChapters(activeSubjectKey);
         }
+
+        window.addEventListener("popstate", () => {
+            if (!document.getElementById("viewPlayer").classList.contains("active")) return;
+            playerHistoryEntry = false;
+            openChapters(activeSubjectKey);
+        });
 
         /* ============ VIEW 3: VIDEO STUDY ROOM ============ */
         function openPlayer(key, index) {
             saveCurrentPlayback();
+            if (!document.getElementById("viewPlayer").classList.contains("active")) {
+                try {
+                    history.pushState({ ...(history.state || {}), academicView: "player" }, "", location.href);
+                    playerHistoryEntry = true;
+                } catch (_) { playerHistoryEntry = false; }
+            }
             activeSubjectKey = key;
             activeChapterIndex = index;
             persistLastStudy(key, index);
@@ -2623,8 +2638,7 @@
             frame.classList.add('show-controls');
             frame.classList.remove('hide-cursor');
             clearTimeout(hideTimer);
-            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
-            if (!media.paused) hideTimer = setTimeout(() => { frame.classList.remove('show-controls'); frame.classList.add('hide-cursor'); }, 2600);
+            if (!media.paused) hideTimer = setTimeout(() => { frame.classList.remove('show-controls'); frame.classList.add('hide-cursor'); }, 2000);
         }
         function toggleFullscreen() {
             const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -2651,7 +2665,7 @@
 
             btnPlay.addEventListener('click', togglePlay);
             document.getElementById('bigPlay').addEventListener('click', togglePlay);
-            media.addEventListener('click', togglePlay);
+            media.addEventListener('click', revealControls);
             document.getElementById('btnBack').addEventListener('click', () => seekBy(-10));
             document.getElementById('btnFwd').addEventListener('click', () => seekBy(10));
             document.getElementById('btnFs').addEventListener('click', toggleFullscreen);
@@ -2721,8 +2735,9 @@
             });
 
             frame.addEventListener('mousemove', revealControls);
+            frame.addEventListener('pointermove', revealControls);
             frame.addEventListener('touchstart', revealControls, { passive: true });
-            frame.addEventListener('mouseleave', () => { if (!media.paused) { clearTimeout(hideTimer); hideTimer = setTimeout(() => frame.classList.remove('show-controls'), 600); } });
+            frame.addEventListener('mouseleave', () => { if (!media.paused) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { frame.classList.remove('show-controls'); frame.classList.add('hide-cursor'); }, 2000); } });
             const syncFullscreen = () => {
                 const fullscreen = document.fullscreenElement || document.webkitFullscreenElement;
                 setIcon(document.getElementById('btnFs'), fullscreen ? 'fa-compress' : 'fa-expand');

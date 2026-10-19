@@ -121,7 +121,10 @@ export async function signUp({ name, email, password, keyword, roll, branch, yea
   }
 
   await supabase.auth.signOut();
-  return { needsEmailConfirm: true, emailVerificationSent, emailAlreadyVerified, emailVerificationError };
+  return {
+    needsEmailConfirm: true, emailVerificationSent, emailAlreadyVerified, emailVerificationError,
+    recoveryBackup: identity.backup
+  };
 }
 
 /* ============ Sign in ============ */
@@ -263,6 +266,22 @@ export async function unlockWithKeyword(keyword) {
   if (isLocalKeyRemembered(user.id)) await saveLocalPrivateKey(user.id, key);
   else await wipeLocalKeys(user.id);
   try { await cleanupSignupMetadata(user); } catch { /* ignore */ }
+  return key;
+}
+
+export async function unlockWithRecoveryFile(file, keyword) {
+  const session = await getSession();
+  if (!session) throw new Error('NOT_LOGGED_IN');
+  let recovery;
+  try {
+    recovery = JSON.parse(await file.text());
+    if (recovery?.format !== 'mgm-chat-recovery-v1' || !recovery.backup) throw new Error('INVALID_FILE');
+  } catch {
+    throw new Error('INVALID_RECOVERY_FILE');
+  }
+  const key = await restoreIdentity(recovery.backup, keyword);
+  if (isLocalKeyRemembered(session.user.id)) await saveLocalPrivateKey(session.user.id, key);
+  else await wipeLocalKeys(session.user.id);
   return key;
 }
 

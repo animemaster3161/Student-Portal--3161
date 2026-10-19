@@ -353,6 +353,8 @@ html{overflow-x:hidden;max-width:100vw;}
   }
   .btn-resend:hover{ background:rgba(92,225,255,0.14); }
   .btn-resend:disabled{ opacity:.65; cursor:wait; }
+  #downloadRecoveryBtn{ display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; }
+  #downloadRecoveryBtn[hidden]{ display:none; }
   .redirect-countdown{
     margin:0 0 14px;
     color:var(--ink-dim);
@@ -587,6 +589,12 @@ html{overflow-x:hidden;max-width:100vw;}
 
           <div class="form-message" id="signupMessage"></div>
           <button class="btn-resend" id="resendSignupEmailBtn" type="button" hidden>Resend verification email</button>
+          <a class="btn-resend" id="downloadRecoveryBtn" hidden>
+            <i class="fas fa-shield-halved"></i> Download Recovery Codes
+          </a>
+          <p id="recoveryDownloadHint" hidden style="margin:-6px 0 14px;color:var(--ink-dim);font-size:11.5px;line-height:1.5;text-align:center">
+            Encrypted with your Security Keyword. Keep this file and keyword safe; use both to restore chat on another device.
+          </p>
           <p class="redirect-countdown" id="signupRedirectStatus" hidden></p>
 
           <button class="btn-primary" type="submit" style="margin-top:6px;">Create account</button>
@@ -619,6 +627,8 @@ html{overflow-x:hidden;max-width:100vw;}
   const signupForm = document.getElementById('signupForm');
   const signupMessage = document.getElementById('signupMessage');
   const resendSignupEmailBtn = document.getElementById('resendSignupEmailBtn');
+  const downloadRecoveryBtn = document.getElementById('downloadRecoveryBtn');
+  const recoveryDownloadHint = document.getElementById('recoveryDownloadHint');
   const signupRedirectStatus = document.getElementById('signupRedirectStatus');
   const btn = signupForm.querySelector('.btn-primary');
   const v = (id) => document.getElementById(id).value.trim();
@@ -700,7 +710,15 @@ html{overflow-x:hidden;max-width:100vw;}
     btn.disabled = true;
     showMessage(signupMessage, 'Creating account and generating your encryption keys...', 'success');
     try{
-      const { needsEmailConfirm, emailVerificationSent, emailAlreadyVerified, emailVerificationError } = await signUp(data);
+      const { needsEmailConfirm, emailVerificationSent, emailAlreadyVerified, emailVerificationError, recoveryBackup } = await signUp(data);
+      const recoveryBlob = new Blob([JSON.stringify({
+        format: 'mgm-chat-recovery-v1',
+        backup: recoveryBackup
+      }, null, 2)], { type: 'application/json' });
+      downloadRecoveryBtn.href = URL.createObjectURL(recoveryBlob);
+      downloadRecoveryBtn.download = 'MGMCOET-Recovery-Codes.json';
+      downloadRecoveryBtn.hidden = false;
+      recoveryDownloadHint.hidden = false;
       if(needsEmailConfirm){
         resendCredentials = { id: data.email, password: data.password };
         resendSignupEmailBtn.hidden = false;

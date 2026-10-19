@@ -1,5 +1,5 @@
 // community.js -- Module B: Community Real-time Chat (1:1 DMs)
-import { requireAuth, supabase, unlockWithKeyword } from './auth.js';
+import { requireAuth, supabase, unlockWithKeyword, unlockWithRecoveryFile } from './auth.js';
 import { getLocalPrivateKey } from './e2ee.js';
 import {
   getConversationKey, encryptPayload, decryptPayload, encryptFile, decryptFile, fromB64, toB64
@@ -167,6 +167,7 @@ function openUnlock() {
   ensureUnlockUI();
   $('unlockErr').style.display = 'none';
   $('unlockInput').value = '';
+  $('recoveryFileInput').value = '';
   $('unlockModal').classList.add('show');
   setTimeout(() => $('unlockInput').focus(), 50);
 }
@@ -185,6 +186,8 @@ function ensureUnlockUI() {
         No encryption key was found on this device. Enter the Security Keyword you created during sign-up.
         Choose 'Remember this device' at sign-in to keep the key here and avoid future prompts. Each device needs its own first unlock.</p>
       <input type="password" class="modal-input" id="unlockInput" placeholder="Security Keyword" autocomplete="off">
+      <label for="recoveryFileInput" style="display:block;margin-top:12px;color:var(--ink-soft);font-size:12px">Or choose your password-protected Recovery Codes file</label>
+      <input type="file" id="recoveryFileInput" accept=".json,application/json" style="display:block;width:100%;margin-top:6px;font-size:12px;color:var(--ink-soft)">
       <a href="change_keyword.html" style="display:block;text-align:center;margin-top:10px;color:var(--blue);font-size:12px;text-decoration:none">
         Forgot keyword? Recovery options</a>
       <p id="unlockErr" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></p>
@@ -230,15 +233,19 @@ function lockedNote() {
 
 async function doUnlock() {
   const kw = $('unlockInput').value;
+  const recoveryFile = $('recoveryFileInput').files?.[0];
   const err = $('unlockErr'), btn = $('unlockBtn');
   if (!kw.trim()) { err.textContent = 'Enter your keyword.'; err.style.display = 'block'; return; }
 
   btn.disabled = true; err.style.display = 'none';
   try {
-    S.priv = await unlockWithKeyword(kw);
+    S.priv = recoveryFile
+      ? await unlockWithRecoveryFile(recoveryFile, kw)
+      : await unlockWithKeyword(kw);
   } catch (e) {
     err.textContent = e.message === 'WRONG_KEYWORD' ? 'Incorrect keyword. Please try again.'
       : e.message === 'NO_BACKUP' ? 'No key backup was found for this account.'
+      : e.message === 'INVALID_RECOVERY_FILE' ? 'That file is not a valid MGM chat Recovery Codes file.'
       : 'Unable to unlock: ' + (e.message || 'Unknown error');
     err.style.display = 'block';
     btn.disabled = false;
@@ -2647,11 +2654,39 @@ function wireUI() {
   // composer
   $('msgInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComposer(); });
   document.querySelector('.send-btn').addEventListener('click', sendComposer);
-  document.querySelector('.attach-btn').addEventListener('click', () => $('fileInput').click());
-  $('fileInput').addEventListener('change', function () {
-    const files = Array.from(this.files || []);
-    this.value = '';
-    addAttachmentDraft(files);
+  const attachmentMenu = $('attachmentMenu');
+  const attachButton = $('attachButton');
+  const closeAttachmentMenu = () => {
+    attachmentMenu.hidden = true;
+    attachButton.setAttribute('aria-expanded', 'false');
+  };
+  attachButton.addEventListener('click', () => {
+    attachmentMenu.hidden = !attachmentMenu.hidden;
+    attachButton.setAttribute('aria-expanded', String(!attachmentMenu.hidden));
+  });
+  $('mobileCameraButton').addEventListener('click', () => $('cameraInput').click());
+  attachmentMenu.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-picker]');
+    if (!option) return;
+    const inputId = { document: 'fileInput', gallery: 'galleryInput', camera: 'cameraInput' }[option.dataset.picker];
+    closeAttachmentMenu();
+    if (inputId) $(inputId).click();
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#attachmentPicker')) closeAttachmentMenu();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !attachmentMenu.hidden) {
+      closeAttachmentMenu();
+      attachButton.focus();
+    }
+  });
+  ['fileInput', 'galleryInput', 'cameraInput'].forEach((inputId) => {
+    $(inputId).addEventListener('change', function () {
+      const files = Array.from(this.files || []);
+      this.value = '';
+      addAttachmentDraft(files);
+    });
   });
 
   // infinite scroll up -> live table, phir Cloudinary archive
